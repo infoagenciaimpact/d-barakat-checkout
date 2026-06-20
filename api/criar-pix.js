@@ -6,9 +6,13 @@ const PIX_KEY = process.env.PIX_KEY || '13871026-0aef-4a12-a405-1a42628144c5';
 const MERCHANT_NAME = process.env.PIX_MERCHANT_NAME || 'VICIO DE UMA ESTUDANTE';
 const MERCHANT_CITY = process.env.PIX_MERCHANT_CITY || 'FORTALEZA';
 
+// IMPORTANTE: o tamanho de cada campo EMV deve ser contado em BYTES (UTF-8),
+// não em caracteres. Isso evita corromper o payload quando há qualquer
+// caractere fora do ASCII puro escapando para esses campos.
 function emvField(id, value) {
   value = String(value || '');
-  const len = value.length.toString().padStart(2, '0');
+  const byteLength = Buffer.byteLength(value, 'utf8');
+  const len = byteLength.toString().padStart(2, '0');
   return `${id}${len}${value}`;
 }
 
@@ -27,6 +31,12 @@ function crc16(payload) {
   return crc.toString(16).toUpperCase().padStart(4, '0');
 }
 
+// Usado SOMENTE para nome do beneficiário e cidade (campos 59 e 60),
+// que exigem texto maiúsculo, sem acento e sem caracteres especiais.
+// Esta função NUNCA deve ser usada para gerar um campo de descrição
+// dentro do payload Pix — o BR Code não tem (e não deve ter) um campo
+// de "descrição do produto"; isso pertence apenas aos metadados da
+// nossa própria aplicação, nunca ao EMV/QR Code em si.
 function limparTexto(str, max) {
   return String(str || '')
     .normalize('NFD')
@@ -63,6 +73,9 @@ function gerarTxid() {
   return txid;
 }
 
+// Gera o payload Pix (BR Code) EMV puro: chave aleatória + valor + txid.
+// Deliberadamente NÃO inclui nenhum campo de descrição/produto — isso
+// nunca deve entrar no payload EMV, só nos metadados internos da API.
 function gerarPayloadPix({ valor }) {
   const valorFormatado = limparValor(valor);
   const txid = gerarTxid();
@@ -126,6 +139,9 @@ module.exports = async (req, res) => {
       });
     }
 
+    // O campo "produto" (nome do curso/oferta) é usado SOMENTE como
+    // metadado de negócio (para registro/CRM/WhatsApp). Ele nunca é
+    // inserido no payload EMV do Pix.
     const { payload, txid } = gerarPayloadPix({ valor });
 
     const qrCodeBase64 = await QRCode.toDataURL(payload, {
