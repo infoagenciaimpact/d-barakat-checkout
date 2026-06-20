@@ -409,6 +409,7 @@ const PIX_KEY = '13871026-0aef-4a12-a405-1a42628144c5';
 const MERCHANT_NAME = 'VICIO DE UMA ESTUDANTE';
 const MERCHANT_CITY = 'FORTALEZA';
 const WHATSAPP_NUM = '5511920096589';
+const CHECKOUT_PIX_VERSION = 'PIX_SEM_DESCRICAO_20260620';
 
 let orderbumpAtivo = false;
 let PIX_ATUAL = '';
@@ -462,7 +463,7 @@ function gerarTxid() {
   return txid;
 }
 
-ffunction gerarPayloadPix(valor) {
+function gerarPayloadPix(valor) {
   const valorFormatado = Number(valor).toFixed(2);
 
   const gui = emvField('00', 'br.gov.bcb.pix');
@@ -595,6 +596,7 @@ function showModal(html) {
 
 function showPixQR(payload, email, nome) {
   PIX_ATUAL = String(payload || '').trim();
+  console.log('PAYLOAD_PIX_SEM_DESCRICAO:', PIX_ATUAL);
 
   const linkWhats = 'https://wa.me/' + WHATSAPP_NUM + '?text=' + encodeURIComponent(
     'Olá! Acabei de pagar o Pix do ' + PRODUTO_NOME + '.\nNome: ' + nome + '\nEmail: ' + email
