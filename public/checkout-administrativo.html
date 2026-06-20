@@ -527,67 +527,117 @@
     }
   }
 
-  function showPixQR(payload, qrBase64, email, nome) {
-    const linkWhats = 'https://wa.me/' + WHATSAPP_NUM + '?text=' + encodeURIComponent(
-      'Olá! Acabei de pagar o Pix do Método VDE - 2ª Fase OAB Administrativo.\nNome: ' + nome + '\nEmail: ' + email
-    );
+  let PIX_ATUAL = '';
 
-    showModal(`
-      <div>
-        <div style="font-size:14px;font-weight:700;color:#111;margin-bottom:4px;">Pague com PIX</div>
-        <div style="font-size:12px;color:#888;margin-bottom:14px;">Escaneie o QR Code ou copie o código</div>
-        <div id="qrcode" style="display:flex;justify-content:center;margin-bottom:14px;"></div>
-        <div style="background:#f5f3ff;border:1.5px solid #7c3aed;border-radius:10px;padding:12px 14px;margin-bottom:12px;">
-          <div style="font-size:10px;font-weight:700;color:#7c3aed;margin-bottom:6px;letter-spacing:.5px;text-transform:uppercase;">Código Pix Copia e Cola</div>
-          <div id="pixCode" style="font-size:9px;color:#333;word-break:break-all;line-height:1.6;font-family:monospace;background:#fff;border-radius:6px;padding:8px;border:1px solid #ddd;">${payload}</div>
-          <div style="margin-top:8px;font-size:9.5px;color:#666;">
-            <b>Beneficiário:</b> VICIO DE UMA ESTUDANTE<br/>
-            <b>Tipo de chave:</b> Chave aleatória<br/>
-            <b>Valor:</b> R$ ${getValorTotal().toFixed(2).replace('.', ',')}
-          </div>
+function showPixQR(payload, qrBase64, email, nome) {
+  PIX_ATUAL = String(payload || '').trim();
+
+  const linkWhats = 'https://wa.me/' + WHATSAPP_NUM + '?text=' + encodeURIComponent(
+    'Olá! Acabei de pagar o Pix do Método VDE - 2ª Fase OAB Administrativo.\nNome: ' + nome + '\nEmail: ' + email
+  );
+
+  showModal(`
+    <div>
+      <div style="font-size:14px;font-weight:700;color:#111;margin-bottom:4px;">Pague com PIX</div>
+      <div style="font-size:12px;color:#888;margin-bottom:14px;">Escaneie o QR Code ou copie o código</div>
+
+      <div id="qrcode" style="display:flex;justify-content:center;margin-bottom:14px;"></div>
+
+      <div style="background:#f5f3ff;border:1.5px solid #7c3aed;border-radius:10px;padding:12px 14px;margin-bottom:12px;">
+        <div style="font-size:10px;font-weight:700;color:#7c3aed;margin-bottom:6px;letter-spacing:.5px;text-transform:uppercase;">
+          Código Pix Copia e Cola
         </div>
-        <button id="btnCopiarPix" onclick="copiarPix('${payload.replace(/'/g,"\\'")}' )" style="width:100%;background:#32bcad;color:#fff;border:none;border-radius:8px;padding:13px;font-size:15px;font-weight:800;cursor:pointer;margin-bottom:10px;">📋 Copiar código PIX</button>
-        <a href="${linkWhats}" target="_blank" rel="noopener" style="display:block;width:100%;background:#25D366;color:#fff;border:none;border-radius:8px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;text-decoration:none;box-sizing:border-box;">✅ Já paguei, confirmar no WhatsApp</a>
-        <div style="font-size:11px;color:#aaa;margin-top:10px;">O acesso será enviado para:<br><strong style="color:#555;">${email}</strong><br/>após a confirmação do pagamento.</div>
+
+        <div id="pixCode" style="font-size:9px;color:#333;word-break:break-all;line-height:1.6;font-family:monospace;background:#fff;border-radius:6px;padding:8px;border:1px solid #ddd;"></div>
+
+        <div style="margin-top:8px;font-size:9.5px;color:#666;">
+          <b>Beneficiário:</b> VICIO DE UMA ESTUDANTE<br/>
+          <b>Tipo de chave:</b> Chave aleatória<br/>
+          <b>Valor:</b> R$ ${getValorTotal().toFixed(2).replace('.', ',')}
+        </div>
       </div>
-    `);
 
-    setTimeout(() => {
-      if (qrBase64) {
-        document.getElementById('qrcode').innerHTML = '<img src="data:image/png;base64,' + qrBase64 + '" style="width:200px;height:200px;" />';
+      <button id="btnCopiarPix" type="button" style="width:100%;background:#32bcad;color:#fff;border:none;border-radius:8px;padding:13px;font-size:15px;font-weight:800;cursor:pointer;margin-bottom:10px;">
+        📋 Copiar código PIX
+      </button>
+
+      <a href="${linkWhats}" target="_blank" rel="noopener" style="display:block;width:100%;background:#25D366;color:#fff;border:none;border-radius:8px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;text-decoration:none;box-sizing:border-box;text-align:center;">
+        ✅ Já paguei, confirmar no WhatsApp
+      </a>
+
+      <div style="font-size:11px;color:#aaa;margin-top:10px;">
+        O acesso será enviado para:<br>
+        <strong style="color:#555;">${email}</strong><br/>
+        após a confirmação do pagamento.
+      </div>
+    </div>
+  `);
+
+  const pixCodeEl = document.getElementById('pixCode');
+  if (pixCodeEl) {
+    pixCodeEl.textContent = PIX_ATUAL;
+  }
+
+  const btnCopiar = document.getElementById('btnCopiarPix');
+  if (btnCopiar) {
+    btnCopiar.addEventListener('click', copiarPix);
+  }
+
+  const qrcodeEl = document.getElementById('qrcode');
+
+  if (qrcodeEl && qrBase64) {
+    qrcodeEl.innerHTML = '<img src="data:image/png;base64,' + qrBase64 + '" style="width:200px;height:200px;" />';
+  }
+}
+
+function copiarPix() {
+  const texto = String(PIX_ATUAL || '').trim();
+  const btn = document.getElementById('btnCopiarPix');
+
+  if (!texto) {
+    if (btn) btn.textContent = 'Erro ao copiar';
+    return;
+  }
+
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(texto).then(function() {
+      if (btn) {
+        btn.textContent = '✅ Copiado!';
+        setTimeout(function() {
+          btn.textContent = '📋 Copiar código PIX';
+        }, 2500);
       }
-    }, 100);
+    }).catch(function() {
+      copiarPixFallback(texto, btn);
+    });
+  } else {
+    copiarPixFallback(texto, btn);
   }
+}
 
-  function copiarPix(texto) {
-    var btn = document.getElementById('btnCopiarPix');
-    if (navigator.clipboard && window.isSecureContext) {
-      navigator.clipboard.writeText(texto).then(function() {
-        if (btn) { btn.textContent = '✅ Copiado!'; setTimeout(function(){ btn.textContent = '📋 Copiar código PIX'; }, 2500); }
-      }).catch(function() { _copiarFallback(texto, btn); });
-    } else { _copiarFallback(texto, btn); }
-  }
+function copiarPixFallback(texto, btn) {
+  const el = document.createElement('textarea');
+  el.value = texto;
+  el.setAttribute('readonly', '');
+  el.style.position = 'fixed';
+  el.style.left = '-9999px';
+  el.style.top = '-9999px';
 
-  function _copiarFallback(texto, btn) {
-    var el = document.createElement('textarea');
-    el.value = texto; el.style.position = 'fixed'; el.style.left = '-9999px';
-    document.body.appendChild(el); el.focus(); el.select();
-    document.execCommand('copy'); document.body.removeChild(el);
-    if (btn) { btn.textContent = '✅ Copiado!'; setTimeout(function(){ btn.textContent = '📋 Copiar código PIX'; }, 2500); }
-  }
+  document.body.appendChild(el);
+  el.focus();
+  el.select();
+  el.setSelectionRange(0, el.value.length);
 
-  function showModal(html) {
-    document.getElementById('modalContent').innerHTML = html;
-    document.getElementById('pixModal').style.display = 'flex';
-  }
+  document.execCommand('copy');
+  document.body.removeChild(el);
 
-  function closeModal() {
-    document.getElementById('pixModal').style.display = 'none';
+  if (btn) {
+    btn.textContent = '✅ Copiado!';
+    setTimeout(function() {
+      btn.textContent = '📋 Copiar código PIX';
+    }, 2500);
   }
-
-  function showErro(msg) {
-    showModal(`<div style="padding:20px 0;"><div style="font-size:32px;margin-bottom:12px;">⚠️</div><div style="font-size:14px;font-weight:700;color:#e05252;margin-bottom:10px;">${msg}</div><button onclick="closeModal()" style="background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;cursor:pointer;">OK</button></div>`);
-  }
+}
 </script>
 </body>
 </html>
