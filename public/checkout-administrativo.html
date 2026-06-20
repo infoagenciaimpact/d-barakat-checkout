@@ -2,7 +2,8 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>  
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
   <title>Checkout – Metodo VDE 2 Fase OAB Administrativo</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
   <style>
@@ -397,162 +398,237 @@
 </div>
 
 <script>
-  const PRODUTO_VALOR  = 297.00;
-  const PRODUTO_NOME   = 'Método VDE - 2ª Fase OAB Administrativo';
-  const MATERIA_SLUG   = 'administrativo';
-  const ORDERBUMP_VALOR = 67.00;
-  const ORDERBUMP_NOME  = 'Gabaritaço OAB - 2ª Fase Administrativo';
-  let orderbumpAtivo = false;
+const PRODUTO_VALOR = 297.00;
+const PRODUTO_NOME = 'Método VDE - 2ª Fase OAB Administrativo';
+const MATERIA_SLUG = 'administrativo';
 
-  function getValorTotal() {
-    return orderbumpAtivo ? (PRODUTO_VALOR + ORDERBUMP_VALOR) : PRODUTO_VALOR;
-  }
+const ORDERBUMP_VALOR = 67.00;
+const ORDERBUMP_NOME = 'Gabaritaço OAB - 2ª Fase Administrativo';
 
-  function toggleOrderbump(e) {
-    if (e.target && e.target.tagName === 'INPUT') return; // evita duplo toggle ao clicar direto no checkbox
-    const checkbox = document.getElementById('orderbumpCheckbox');
-    checkbox.checked = !checkbox.checked;
-    onOrderbumpChange();
-  }
+const PIX_KEY = '13871026-0aef-4a12-a405-1a42628144c5';
+const MERCHANT_NAME = 'VICIO DE UMA ESTUDANTE';
+const MERCHANT_CITY = 'FORTALEZA';
+const WHATSAPP_NUM = '5511920096589';
 
-  function onOrderbumpChange() {
-    const checkbox = document.getElementById('orderbumpCheckbox');
-    const box = document.getElementById('orderbumpBox');
-    orderbumpAtivo = checkbox.checked;
-    box.classList.toggle('selecionado', orderbumpAtivo);
+let orderbumpAtivo = false;
+let PIX_ATUAL = '';
 
-    const itemBump = document.getElementById('detalhesOrderbumpItem');
-    const itemTotal = document.getElementById('detalhesTotalItem');
-    const totalValor = document.getElementById('detalhesTotalValor');
-    const btn = document.getElementById('btnComprar');
+function getValorTotal() {
+  return orderbumpAtivo ? PRODUTO_VALOR + ORDERBUMP_VALOR : PRODUTO_VALOR;
+}
 
-    if (orderbumpAtivo) {
-      itemBump.style.display = 'flex';
-      itemTotal.style.display = 'flex';
-      const total = getValorTotal();
-      totalValor.textContent = 'R$ ' + total.toFixed(2).replace('.', ',');
-      btn.textContent = 'Comprar agora · R$ ' + total.toFixed(2).replace('.', ',');
-    } else {
-      itemBump.style.display = 'none';
-      itemTotal.style.display = 'none';
-      btn.textContent = 'Comprar agora';
-    }
-  }
-  const WHATSAPP_NUM   = '5511920096589';
+function emvField(id, value) {
+  value = String(value || '');
+  const len = value.length.toString().padStart(2, '0');
+  return id + len + value;
+}
 
-  document.getElementById('cpf').addEventListener('input', function(e) {
-    let v = e.target.value.replace(/\D/g,'').substring(0,11);
-    v = v.replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d{1,2})$/,'$1-$2');
-    e.target.value = v;
-  });
+function crc16(payload) {
+  let crc = 0xFFFF;
 
-  document.getElementById('cel').addEventListener('input', function(e) {
-    let v = e.target.value.replace(/\D/g,'').substring(0,11);
-    v = v.replace(/^(\d{2})(\d)/,'($1) $2').replace(/(\d{5})(\d)/,'$1-$2');
-    e.target.value = v;
-  });
+  for (let i = 0; i < payload.length; i++) {
+    crc ^= payload.charCodeAt(i) << 8;
 
-  function validarCPF(cpf) {
-    cpf = cpf.replace(/\D/g,'');
-    if (cpf.length !== 11 || /^(\d)\1+$/.test(cpf)) return false;
-    let soma = 0, resto;
-    for (let i=1; i<=9; i++) soma += parseInt(cpf[i-1]) * (11-i);
-    resto = (soma*10)%11;
-    if (resto===10||resto===11) resto=0;
-    if (resto!==parseInt(cpf[9])) return false;
-    soma=0;
-    for (let i=1; i<=10; i++) soma += parseInt(cpf[i-1]) * (12-i);
-    resto = (soma*10)%11;
-    if (resto===10||resto===11) resto=0;
-    return resto===parseInt(cpf[10]);
-  }
-
-  async function handleBuy() {
-    const nome  = document.getElementById('nome').value.trim();
-    const email = document.getElementById('email').value.trim();
-    const email2= document.getElementById('email2').value.trim();
-    const cpf   = document.getElementById('cpf').value.trim();
-    const cel   = document.getElementById('cel').value.trim();
-
-    if (!nome)              return showErro('Por favor, preencha seu nome completo.');
-    if (!email || !email.includes('@')) return showErro('Por favor, informe um email válido.');
-    if (email !== email2)   return showErro('Os emails não coincidem.');
-    if (!validarCPF(cpf))   return showErro('CPF inválido. Verifique e tente novamente.');
-    if (cel.replace(/\D/g,'').length < 10) return showErro('Celular inválido.');
-
-    showModal(`
-      <div style="padding:20px 0;">
-        <div style="font-size:32px;margin-bottom:12px;">⏳</div>
-        <div style="font-size:15px;font-weight:700;color:#111;margin-bottom:6px;">Gerando seu PIX...</div>
-        <div style="font-size:13px;color:#888;">Aguarde um instante</div>
-      </div>
-    `);
-
-    try {
-      const res = await fetch('/api/criar-pix', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          valor: getValorTotal(),
-          email: email,
-          primeiro_nome: nome.split(' ')[0],
-          ultimo_nome: nome.split(' ').slice(1).join(' ') || nome.split(' ')[0],
-          cpf: cpf.replace(/\D/g,''),
-          materia: MATERIA_SLUG,
-          produto: orderbumpAtivo ? (PRODUTO_NOME + ' + ' + ORDERBUMP_NOME) : PRODUTO_NOME,
-          orderbump: orderbumpAtivo
-        })
-      });
-
-      const data = await res.json();
-      if (!res.ok || data.error) {
-        throw new Error(data.message || 'Não foi possível gerar o Pix.');
+    for (let j = 0; j < 8; j++) {
+      if ((crc & 0x8000) !== 0) {
+        crc = (crc << 1) ^ 0x1021;
+      } else {
+        crc = crc << 1;
       }
 
-      const pixPayload  = data.point_of_interaction?.transaction_data?.qr_code;
-      const pixQrBase64 = data.point_of_interaction?.transaction_data?.qr_code_base64;
-
-      if (!pixPayload) throw new Error('QR Code PIX não retornado.');
-      showPixQR(pixPayload, pixQrBase64, email, nome);
-
-    } catch (err) {
-      showModal(`
-        <div style="padding:20px 0;">
-          <div style="font-size:32px;margin-bottom:12px;">❌</div>
-          <div style="font-size:15px;font-weight:700;color:#e05252;margin-bottom:8px;">Erro ao processar</div>
-          <div style="font-size:13px;color:#666;margin-bottom:16px;">${err.message}</div>
-          <button onclick="closeModal()" style="background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;cursor:pointer;">Tentar novamente</button>
-        </div>
-      `);
+      crc &= 0xFFFF;
     }
   }
 
-  let PIX_ATUAL = '';
+  return crc.toString(16).toUpperCase().padStart(4, '0');
+}
 
-function showPixQR(payload, qrBase64, email, nome) {
+function removerAcentos(str) {
+  return String(str || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^A-Za-z0-9 ]/g, '')
+    .toUpperCase();
+}
+
+function limparDescricaoPix(texto) {
+  return String(texto || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^A-Za-z0-9 .,-]/g, '')
+    .substring(0, 25)
+    .toUpperCase();
+}
+
+function gerarTxid() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let txid = '';
+
+  for (let i = 0; i < 14; i++) {
+    txid += chars[Math.floor(Math.random() * chars.length)];
+  }
+
+  return txid;
+}
+
+function gerarPayloadPix(valor, descricao) {
+  const valorFormatado = Number(valor).toFixed(2);
+  const txid = gerarTxid();
+
+  const gui = emvField('00', 'br.gov.bcb.pix');
+  const key = emvField('01', PIX_KEY);
+
+  const descLimpa = limparDescricaoPix(descricao);
+  const desc = descLimpa ? emvField('02', descLimpa) : '';
+
+  const merchantAccountInfo = emvField('26', gui + key + desc);
+
+  let payload =
+    emvField('00', '01') +
+    emvField('01', '11') +
+    merchantAccountInfo +
+    emvField('52', '0000') +
+    emvField('53', '986') +
+    emvField('54', valorFormatado) +
+    emvField('58', 'BR') +
+    emvField('59', removerAcentos(MERCHANT_NAME).substring(0, 25)) +
+    emvField('60', removerAcentos(MERCHANT_CITY).substring(0, 15)) +
+    emvField('62', emvField('05', txid)) +
+    '6304';
+
+  return payload + crc16(payload);
+}
+
+function toggleOrderbump(e) {
+  if (e.target && e.target.tagName === 'INPUT') return;
+
+  const checkbox = document.getElementById('orderbumpCheckbox');
+  checkbox.checked = !checkbox.checked;
+
+  onOrderbumpChange();
+}
+
+function onOrderbumpChange() {
+  const checkbox = document.getElementById('orderbumpCheckbox');
+  const box = document.getElementById('orderbumpBox');
+
+  orderbumpAtivo = checkbox.checked;
+  box.classList.toggle('selecionado', orderbumpAtivo);
+
+  const itemBump = document.getElementById('detalhesOrderbumpItem');
+  const itemTotal = document.getElementById('detalhesTotalItem');
+  const totalValor = document.getElementById('detalhesTotalValor');
+  const btn = document.getElementById('btnComprar');
+
+  if (orderbumpAtivo) {
+    itemBump.style.display = 'flex';
+    itemTotal.style.display = 'flex';
+
+    const total = getValorTotal();
+
+    totalValor.textContent = 'R$ ' + total.toFixed(2).replace('.', ',');
+    btn.textContent = 'Comprar agora · R$ ' + total.toFixed(2).replace('.', ',');
+  } else {
+    itemBump.style.display = 'none';
+    itemTotal.style.display = 'none';
+    btn.textContent = 'Comprar agora';
+  }
+}
+
+document.getElementById('cpf').addEventListener('input', function(e) {
+  let v = e.target.value.replace(/\D/g, '').substring(0, 11);
+  v = v.replace(/(\d{3})(\d)/, '$1.$2')
+       .replace(/(\d{3})(\d)/, '$1.$2')
+       .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+
+  e.target.value = v;
+});
+
+document.getElementById('cel').addEventListener('input', function(e) {
+  let v = e.target.value.replace(/\D/g, '').substring(0, 11);
+  v = v.replace(/^(\d{2})(\d)/, '($1) $2')
+       .replace(/(\d{5})(\d)/, '$1-$2');
+
+  e.target.value = v;
+});
+
+function validarCPF(cpf) {
+  cpf = cpf.replace(/\D/g, '');
+
+  if (cpf.length !== 11 || /^(\d)\1+$/.test(cpf)) return false;
+
+  let soma = 0;
+  let resto;
+
+  for (let i = 1; i <= 9; i++) {
+    soma += parseInt(cpf[i - 1]) * (11 - i);
+  }
+
+  resto = (soma * 10) % 11;
+  if (resto === 10 || resto === 11) resto = 0;
+  if (resto !== parseInt(cpf[9])) return false;
+
+  soma = 0;
+
+  for (let i = 1; i <= 10; i++) {
+    soma += parseInt(cpf[i - 1]) * (12 - i);
+  }
+
+  resto = (soma * 10) % 11;
+  if (resto === 10 || resto === 11) resto = 0;
+
+  return resto === parseInt(cpf[10]);
+}
+
+function showModal(html) {
+  let modal = document.getElementById('pixModal');
+
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'pixModal';
+    modal.style.position = 'fixed';
+    modal.style.inset = '0';
+    modal.style.background = 'rgba(0,0,0,.65)';
+    modal.style.zIndex = '99999';
+    modal.style.display = 'flex';
+    modal.style.alignItems = 'center';
+    modal.style.justifyContent = 'center';
+    modal.style.padding = '16px';
+
+    document.body.appendChild(modal);
+  }
+
+  modal.innerHTML = `
+    <div style="background:#fff;border-radius:14px;padding:18px;width:100%;max-width:390px;text-align:center;position:relative;">
+      <button onclick="document.getElementById('pixModal').remove()" style="position:absolute;right:12px;top:10px;border:none;background:transparent;font-size:22px;cursor:pointer;">×</button>
+      ${html}
+    </div>
+  `;
+}
+
+function showPixQR(payload, email, nome) {
   PIX_ATUAL = String(payload || '').trim();
 
   const linkWhats = 'https://wa.me/' + WHATSAPP_NUM + '?text=' + encodeURIComponent(
-    'Olá! Acabei de pagar o Pix do Método VDE - 2ª Fase OAB Administrativo.\nNome: ' + nome + '\nEmail: ' + email
+    'Olá! Acabei de pagar o Pix do ' + PRODUTO_NOME + '.\nNome: ' + nome + '\nEmail: ' + email
   );
 
   showModal(`
     <div>
-      <div style="font-size:14px;font-weight:700;color:#111;margin-bottom:4px;">Pague com PIX</div>
-      <div style="font-size:12px;color:#888;margin-bottom:14px;">Escaneie o QR Code ou copie o código</div>
+      <div style="font-size:15px;font-weight:800;color:#111;margin-bottom:4px;">Pague com PIX</div>
+      <div style="font-size:12px;color:#777;margin-bottom:14px;">Escaneie o QR Code ou copie o código</div>
 
       <div id="qrcode" style="display:flex;justify-content:center;margin-bottom:14px;"></div>
 
       <div style="background:#f5f3ff;border:1.5px solid #7c3aed;border-radius:10px;padding:12px 14px;margin-bottom:12px;">
-        <div style="font-size:10px;font-weight:700;color:#7c3aed;margin-bottom:6px;letter-spacing:.5px;text-transform:uppercase;">
+        <div style="font-size:10px;font-weight:800;color:#7c3aed;margin-bottom:6px;text-transform:uppercase;">
           Código Pix Copia e Cola
         </div>
 
         <div id="pixCode" style="font-size:9px;color:#333;word-break:break-all;line-height:1.6;font-family:monospace;background:#fff;border-radius:6px;padding:8px;border:1px solid #ddd;"></div>
 
-        <div style="margin-top:8px;font-size:9.5px;color:#666;">
-          <b>Beneficiário:</b> VICIO DE UMA ESTUDANTE<br/>
-          <b>Tipo de chave:</b> Chave aleatória<br/>
+        <div style="margin-top:8px;font-size:9.5px;color:#666;text-align:left;">
+          <b>Beneficiário:</b> ${MERCHANT_NAME}<br>
           <b>Valor:</b> R$ ${getValorTotal().toFixed(2).replace('.', ',')}
         </div>
       </div>
@@ -561,33 +637,24 @@ function showPixQR(payload, qrBase64, email, nome) {
         📋 Copiar código PIX
       </button>
 
-      <a href="${linkWhats}" target="_blank" rel="noopener" style="display:block;width:100%;background:#25D366;color:#fff;border:none;border-radius:8px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;text-decoration:none;box-sizing:border-box;text-align:center;">
+      <a href="${linkWhats}" target="_blank" rel="noopener" style="display:block;width:100%;background:#25D366;color:#fff;border-radius:8px;padding:13px;font-size:14px;font-weight:700;text-decoration:none;box-sizing:border-box;">
         ✅ Já paguei, confirmar no WhatsApp
       </a>
-
-      <div style="font-size:11px;color:#aaa;margin-top:10px;">
-        O acesso será enviado para:<br>
-        <strong style="color:#555;">${email}</strong><br/>
-        após a confirmação do pagamento.
-      </div>
     </div>
   `);
 
-  const pixCodeEl = document.getElementById('pixCode');
-  if (pixCodeEl) {
-    pixCodeEl.textContent = PIX_ATUAL;
-  }
-
-  const btnCopiar = document.getElementById('btnCopiarPix');
-  if (btnCopiar) {
-    btnCopiar.addEventListener('click', copiarPix);
-  }
+  document.getElementById('pixCode').textContent = PIX_ATUAL;
+  document.getElementById('btnCopiarPix').addEventListener('click', copiarPix);
 
   const qrcodeEl = document.getElementById('qrcode');
+  qrcodeEl.innerHTML = '';
 
-  if (qrcodeEl && qrBase64) {
-    qrcodeEl.innerHTML = '<img src="data:image/png;base64,' + qrBase64 + '" style="width:200px;height:200px;" />';
-  }
+  new QRCode(qrcodeEl, {
+    text: PIX_ATUAL,
+    width: 220,
+    height: 220,
+    correctLevel: QRCode.CorrectLevel.M
+  });
 }
 
 function copiarPix() {
@@ -595,48 +662,61 @@ function copiarPix() {
   const btn = document.getElementById('btnCopiarPix');
 
   if (!texto) {
-    if (btn) btn.textContent = 'Erro ao copiar';
+    btn.textContent = 'Erro ao copiar';
     return;
   }
 
   if (navigator.clipboard && window.isSecureContext) {
     navigator.clipboard.writeText(texto).then(function() {
-      if (btn) {
-        btn.textContent = '✅ Copiado!';
-        setTimeout(function() {
-          btn.textContent = '📋 Copiar código PIX';
-        }, 2500);
-      }
-    }).catch(function() {
-      copiarPixFallback(texto, btn);
+      btn.textContent = '✅ Copiado!';
+      setTimeout(function() {
+        btn.textContent = '📋 Copiar código PIX';
+      }, 2500);
     });
   } else {
-    copiarPixFallback(texto, btn);
-  }
-}
+    const el = document.createElement('textarea');
+    el.value = texto;
+    document.body.appendChild(el);
+    el.select();
+    document.execCommand('copy');
+    document.body.removeChild(el);
 
-function copiarPixFallback(texto, btn) {
-  const el = document.createElement('textarea');
-  el.value = texto;
-  el.setAttribute('readonly', '');
-  el.style.position = 'fixed';
-  el.style.left = '-9999px';
-  el.style.top = '-9999px';
-
-  document.body.appendChild(el);
-  el.focus();
-  el.select();
-  el.setSelectionRange(0, el.value.length);
-
-  document.execCommand('copy');
-  document.body.removeChild(el);
-
-  if (btn) {
     btn.textContent = '✅ Copiado!';
     setTimeout(function() {
       btn.textContent = '📋 Copiar código PIX';
     }, 2500);
   }
+}
+
+function handleBuy() {
+  const nome = document.getElementById('nome').value.trim();
+  const email = document.getElementById('email').value.trim();
+  const email2 = document.getElementById('email2').value.trim();
+  const cpf = document.getElementById('cpf').value.trim();
+  const cel = document.getElementById('cel').value.trim();
+
+  if (!nome || !email || !email2 || !cpf || !cel) {
+    alert('Preencha todos os campos.');
+    return;
+  }
+
+  if (email !== email2) {
+    alert('Os e-mails não conferem.');
+    return;
+  }
+
+  if (!validarCPF(cpf)) {
+    alert('CPF inválido.');
+    return;
+  }
+
+  const descricao = orderbumpAtivo
+    ? PRODUTO_NOME + ' + ' + ORDERBUMP_NOME
+    : PRODUTO_NOME;
+
+  const payload = gerarPayloadPix(getValorTotal(), descricao);
+
+  showPixQR(payload, email, nome);
 }
 </script>
 </body>
