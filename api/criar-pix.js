@@ -5,9 +5,9 @@
 const QRCode = require('qrcode');
 
 // ── Configuração do beneficiário ──────────────────────────────
-const PIX_KEY        = process.env.PIX_KEY || '13871026-0aef-4a12-a405-1a42628144c5';
-const MERCHANT_NAME  = (process.env.PIX_MERCHANT_NAME || 'VICIO DE UMA ESTUDANTE').substring(0, 25);
-const MERCHANT_CITY  = (process.env.PIX_MERCHANT_CITY || 'FORTALEZA').substring(0, 15);
+const PIX_KEY = process.env.PIX_KEY || '13871026-0aef-4a12-a405-1a42628144c5';
+const MERCHANT_NAME = process.env.PIX_MERCHANT_NAME || 'VICIO DE UMA ESTUDANTE';
+const MERCHANT_CITY = process.env.PIX_MERCHANT_CITY || 'FORTALEZA';
 // ────────────────────────────────────────────────────────────────
 
 function emvField(id, value) {
@@ -19,98 +19,90 @@ function emvField(id, value) {
 
   return `${id}${len}${value}`;
 }
+
 function crc16(payload) {
   let crc = 0xFFFF;
+
   for (let i = 0; i < payload.length; i++) {
     crc ^= payload.charCodeAt(i) << 8;
+
     for (let j = 0; j < 8; j++) {
       if ((crc & 0x8000) !== 0) {
         crc = (crc << 1) ^ 0x1021;
       } else {
         crc = crc << 1;
       }
+
       crc &= 0xFFFF;
     }
   }
+
   return crc.toString(16).toUpperCase().padStart(4, '0');
 }
 
 function gerarTxid() {
-  // txid alfanumérico de até 25 caracteres (sem acentos/símbolos), aqui usamos 14
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let txid = '';
+
   for (let i = 0; i < 14; i++) {
     txid += chars[Math.floor(Math.random() * chars.length)];
   }
+
   return txid;
 }
 
-function removerAcentos(str) {
-  return str
+function limparTextoPix(str, maxLength) {
+  return String(str || '')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-zA-Z0-9 ]/g, '')
-    .toUpperCase();
-}
-
-function limparDescricaoPix(texto) {
-  return String(texto || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')      // remove acentos
-    .replace(/[^\x20-\x7E]/g, '')         // remove qualquer caractere unicode fora do ASCII
-    .replace(/[^A-Za-z0-9 ]/g, ' ')       // mantém apenas letras, números e espaço
-    .replace(/\s+/g, ' ')                 // remove espaços duplicados
+    .replace(/[^\x20-\x7E]/g, '')
+    .replace(/[^A-Za-z0-9 ]/g, '')
+    .replace(/\s+/g, ' ')
     .trim()
     .toUpperCase()
-    .substring(0, 25);
+    .substring(0, maxLength);
 }
 
-function gerarPayloadPix({ chave, nome, cidade, valor, txid, descricao }) {
+function limparValor(valor) {
+  const numero = Number(
+    String(valor)
+      .replace(',', '.')
+      .replace(/[^\d.]/g, '')
+  );
 
-  const valorFormatado = Number(valor).toFixed(2);
+  if (!Number.isFinite(numero) || numero <= 0) {
+    throw new Error('Valor Pix inválido.');
+  }
+
+  return numero.toFixed(2);
+}
+
+function gerarPayloadPix({ chave, nome, cidade, valor, txid }) {
+  const valorFormatado = limparValor(valor);
+
+  const nomeLimpo = limparTextoPix(nome, 25);
+  const cidadeLimpa = limparTextoPix(cidade, 15);
+  const txidLimpo = limparTextoPix(txid, 25);
 
   const gui = emvField('00', 'br.gov.bcb.pix');
   const key = emvField('01', chave);
 
-  const descLimpa = descricao
-  ? limparDescricaoPix(descricao)
-  : '';
-
-  const desc = descLimpa
-    ? emvField('02', descLimpa)
-    : '';
-
-  const merchantAccountInfo = emvField(
-    '26',
-    gui + key + desc
-  );
+  // IMPORTANTE:
+  // Não enviamos descrição no campo 26.02.
+  // Alguns bancos rejeitam o QR Code quando há descrição com caracteres não aceitos.
+  const merchantAccountInfo = emvField('26', gui + key);
 
   const merchantCategoryCode = emvField('52', '0000');
   const transactionCurrency = emvField('53', '986');
   const transactionAmount = emvField('54', valorFormatado);
   const countryCode = emvField('58', 'BR');
+  const merchantNameField = emvField('59', nomeLimpo);
+  const merchantCityField = emvField('60', cidadeLimpa);
 
-  const merchantNameField = emvField(
-    '59',
-    removerAcentos(nome).substring(0, 25)
-  );
+  const additionalDataField = emvField('05', txidLimpo);
+  const additionalData = emvField('62', additionalDataField);
 
-  const merchantCityField = emvField(
-    '60',
-    removerAcentos(cidade).substring(0, 15)
-  );
-
-  const additionalDataField = emvField(
-    '05',
-    txid.substring(0, 25)
-  );
-
-  const additionalData = emvField(
-    '62',
-    additionalDataField
-  );
-
-  let payload =
+  const payloadSemCRC =
     emvField('00', '01') +
     emvField('01', '11') +
     merchantAccountInfo +
@@ -123,9 +115,9 @@ function gerarPayloadPix({ chave, nome, cidade, valor, txid, descricao }) {
     additionalData +
     '6304';
 
-  const crc = crc16(payload);
+  const crc = crc16(payloadSemCRC);
 
-  return payload + crc;
+  return payloadSemCRC + crc;
 }
 
 module.exports = async (req, res) => {
@@ -138,26 +130,38 @@ module.exports = async (req, res) => {
   }
 
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: true, message: 'Método não permitido.' });
+    return res.status(405).json({
+      error: true,
+      message: 'Método não permitido.',
+    });
   }
 
   try {
-    const { valor, email, primeiro_nome, ultimo_nome, cpf, materia, produto } = req.body || {};
+    const {
+      valor,
+      email,
+      primeiro_nome,
+      ultimo_nome,
+      cpf,
+      materia,
+      produto,
+    } = req.body || {};
 
     if (!valor || !email) {
-      return res.status(400).json({ error: true, message: 'Dados obrigatórios faltando (valor, email).' });
+      return res.status(400).json({
+        error: true,
+        message: 'Dados obrigatórios faltando (valor, email).',
+      });
     }
 
     const txid = gerarTxid();
-    const descricaoCurta = (produto || materia || 'OAB 2 FASE').toString();
 
     const payload = gerarPayloadPix({
       chave: PIX_KEY,
       nome: MERCHANT_NAME,
       cidade: MERCHANT_CITY,
-      valor: valor,
-      txid: txid,
-      descricao: descricaoCurta,
+      valor,
+      txid,
     });
 
     const qrCodeBase64 = await QRCode.toDataURL(payload, {
@@ -165,7 +169,7 @@ module.exports = async (req, res) => {
       margin: 1,
       width: 360,
     });
-    // Remover o prefixo "data:image/png;base64," pois o frontend já adiciona
+
     const qrCodeBase64Clean = qrCodeBase64.replace(/^data:image\/png;base64,/, '');
 
     return res.status(200).json({
@@ -179,15 +183,20 @@ module.exports = async (req, res) => {
       },
       metadata: {
         email,
-        primeiro_nome,
-        ultimo_nome,
-        cpf,
+        primeiro_nome: primeiro_nome || null,
+        ultimo_nome: ultimo_nome || null,
+        cpf: cpf || null,
         materia: materia || null,
+        produto: produto || null,
         valor,
       },
     });
   } catch (err) {
     console.error('Erro ao gerar Pix:', err);
-    return res.status(500).json({ error: true, message: 'Erro interno ao gerar o Pix.' });
+
+    return res.status(500).json({
+      error: true,
+      message: 'Erro interno ao gerar o Pix.',
+    });
   }
 };
