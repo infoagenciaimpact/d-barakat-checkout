@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Checkout – Revisão Nocaute OAB 46 | Direito do Trabalho</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', 'Open Sans', sans-serif;
+      background-color: #5b21b6;
+      min-height: 100vh;
+      color: #333;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .page-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      padding: 0;
+    }
+
+    @media (min-width: 820px) {
+      .page-wrapper {
+        padding: 28px 16px;
+        min-height: 100vh;
+      }
+    }
+
+    .col-checkout {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      width: 100%;
+    }
+
+    @media (min-width: 820px) {
+      .col-checkout {
+        width: 480px;
+        max-width: 480px;
+        margin: 0 auto;
+      }
+    }
+
+    /* ── TOPO ROXO ── */
+    .topo-roxo {
+      width: 100%;
+      background: linear-gradient(135deg, #5b21b6 0%, #7c3aed 100%);
+      padding: 18px 16px 16px;
+      text-align: center;
+    }
+    .topo-roxo .badge-oab {
+      display: inline-block;
+      background: #fcd34d;
+      color: #78350f;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 4px 12px;
+      border-radius: 20px;
+      margin-bottom: 8px;
+      letter-spacing: .3px;
+    }
+    .topo-roxo h1 {
+      color: #fff;
+      font-size: 17px;
+      font-weight: 800;
+      line-height: 1.3;
+    }
+    .topo-roxo .materia-nome {
+      color: #fde68a;
+    }
+
+    @media (min-width: 820px) {
+      .topo-roxo {
+        border-radius: 10px 10px 0 0;
+      }
+    }
+
+    /* ── CARD BRANCO ── */
+    .card {
+      background: #fff;
+      width: 100%;
+      border-radius: 0 0 8px 8px;
+      padding: 16px 16px 0;
+    }
+
+    @media (min-width: 820px) {
+      .card {
+        border-radius: 0 0 10px 10px;
+      }
+    }
+
+    .country-bar { display: flex; justify-content: flex-end; margin-bottom: 12px; }
+    .country-btn {
+      background: none; border: none; font-size: 12px; color: #555;
+      cursor: pointer; display: flex; align-items: center; gap: 4px;
+    }
+
+    .product-row { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 16px; }
+    .product-img {
+      width: 64px; height: 64px; border-radius: 6px; object-fit: cover;
+      flex-shrink: 0; background: #5b21b6;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-size: 22px; font-weight: 800;
+    }
+    .product-name { font-size: 13.5px; font-weight: 700; color: #111; line-height: 1.35; margin-bottom: 2px; }
+    .product-author { font-size: 11px; color: #888; margin-bottom: 6px; }
+    .product-price-old { font-size: 12px; color: #999; text-decoration: line-through; }
+    .product-price { font-size: 19px; font-weight: 800; color: #5b21b6; }
+    .product-price-sub { font-size: 11px; color: #7c3aed; margin-top: 1px; }
+    .oferta-badge {
+      display: inline-block; background: #f5f3ff; color: #7c3aed;
+      font-size: 10px; border-radius: 4px; padding: 2px 6px; margin-top: 5px;
+    }
+
+    hr.div { border: none; border-top: 1px solid #e5e7eb; margin: 14px 0; }
+
+    .section-title { font-size: 14px; font-weight: 700; color: #111; margin-bottom: 12px; }
+    .form-col { display: flex; flex-direction: column; gap: 10px; }
+    .form-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .fgroup { display: flex; flex-direction: column; gap: 4px; }
+    .fgroup label { font-size: 11.5px; font-weight: 600; color: #374151; }
+    .fgroup input {
+      padding: 11px 12px; border: 1.5px solid #d1d5db; border-radius: 6px;
+      font-size: 13.5px; color: #111; outline: none; -webkit-appearance: none;
+      width: 100%; transition: border-color .15s;
+    }
+    .fgroup input::placeholder { color: #9ca3af; font-size: 12.5px; }
+    .fgroup input:focus { border-color: #7c3aed; }
+
+    .pix-box {
+      border: 1.5px solid #d1d5db; border-radius: 8px; padding: 14px;
+      display: flex; align-items: center; gap: 10px; background: #ffffff;
+    }
+    .pix-icon-bg {
+      width: 40px; height: 40px; background: #32bcad; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .pix-icon-bg svg { width: 22px; height: 22px; fill: #fff; }
+
+    .detalhes-wrap { margin-top: 14px; }
+    .detalhes-title { font-size: 13px; font-weight: 700; color: #111; margin-bottom: 8px; }
+    .detalhes-item {
+      display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;
+      border: 1px solid #e5e7eb; border-radius: 6px; padding: 10px 12px;
+    }
+    .detalhes-nome { font-size: 12.5px; font-weight: 700; color: #111; flex: 1; line-height: 1.4; }
+    .detalhes-preco { font-size: 12.5px; color: #111; white-space: nowrap; font-weight: 500; }
+
+    .btn-comprar {
+      display: block; width: 100%; padding: 14px 16px; background: #27ae60;
+      color: #fff; font-size: 15px; font-weight: 700; border: none; border-radius: 6px;
+      cursor: pointer; margin-top: 14px; text-align: center; letter-spacing: .15px;
+      font-family: inherit;
+    }
+    .btn-comprar:active { opacity: .88; }
+
+    .protected-row { display: flex; align-items: center; justify-content: center; gap: 5px; padding: 12px 0 14px; }
+
+    .declaracao-section { background: #1a1a1a; padding: 16px 16px 20px; width: 100%; }
+    .declaracao-text { font-size: 10.5px; color: #9ca3af; line-height: 1.65; }
+    .declaracao-text strong { color: #d1d5db; }
+    .copyright { margin-top: 12px; font-size: 10px; color: #6b7280; border-top: 1px solid #2d2d2d; padding-top: 10px; }
+
+    .garantia-section { width: 100%; padding: 24px 16px 8px; display: flex; justify-content: center; }
+
+    .trust-section { width: 100%; padding: 8px 16px 28px; display: flex; flex-direction: column; gap: 10px; }
+    .trust-item {
+      background: #fff; border-radius: 10px; border: 1.5px solid #ddd6fe;
+      padding: 13px 16px; display: flex; align-items: center; gap: 14px;
+    }
+    .trust-item-texts strong { display: block; font-size: 13px; font-weight: 700; color: #111; }
+    .trust-item-texts span { font-size: 11px; color: #7c3aed; font-style: italic; }
+
+    .whatsapp-float {
+      position: fixed; bottom: 22px; right: 22px; width: 58px; height: 58px;
+      background: #25D366; border-radius: 50%; display: flex; align-items: center;
+      justify-content: center; box-shadow: 0 4px 16px rgba(0,0,0,0.25); z-index: 9998;
+      text-decoration: none; animation: whatsapp-pulse 2.2s infinite; transition: transform .15s;
+    }
+    .whatsapp-float:active { transform: scale(0.94); }
+    .whatsapp-float svg { width: 32px; height: 32px; fill: #fff; }
+    @keyframes whatsapp-pulse {
+      0%   { box-shadow: 0 4px 16px rgba(0,0,0,0.25), 0 0 0 0 rgba(37,211,102,0.55); }
+      70%  { box-shadow: 0 4px 16px rgba(0,0,0,0.25), 0 0 0 14px rgba(37,211,102,0); }
+      100% { box-shadow: 0 4px 16px rgba(0,0,0,0.25), 0 0 0 0 rgba(37,211,102,0); }
+    }
+    @media (min-width: 480px) {
+      .whatsapp-float { bottom: 26px; right: 26px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="page-wrapper">
+  <div class="col-checkout">
+
+    <!-- TOPO ROXO -->
+    <div class="topo-roxo">
+      <span class="badge-oab">OAB 46 · 2ª FASE</span>
+      <h1>Revisão Nocaute<br/><span class="materia-nome">Direito do Trabalho</span></h1>
+    </div>
+
+    <!-- CARD BRANCO -->
+    <div class="card">
+
+      <div class="country-bar">
+        <button class="country-btn">
+          🇧🇷 BR
+          <svg width="14" height="14" viewBox="0 0 255 255" fill="#555"><path d="M0 63.75L127.5 191.25L255 63.75z"/></svg>
+          Alterar país
+        </button>
+      </div>
+
+      <div class="product-row">
+        <div class="product-img">DT</div>
+        <div>
+          <div class="product-name">Revisão Nocaute OAB 46 – Direito do Trabalho</div>
+          <div class="product-author">Vício de Uma Estudante</div>
+          <div class="product-price-old">De R$ 1.297,00</div>
+          <div class="product-price">R$&nbsp;297,00</div>
+          <div class="product-price-sub">Pagamento único via Pix</div>
+          <span class="oferta-badge">Oferta Revisão Nocaute · 2ª Fase</span>
+        </div>
+      </div>
+
+      <hr class="div" />
+
+      <div class="section-title">Dados pessoais</div>
+      <div class="form-col">
+        <div class="fgroup">
+          <label for="email">Seu email</label>
+          <input type="email" id="email" placeholder="Digite seu email para receber a compra" />
+        </div>
+        <div class="fgroup">
+          <label for="email2">Confirme seu email</label>
+          <input type="email" id="email2" placeholder="Digite novamente seu email" />
+        </div>
+        <div class="fgroup">
+          <label for="nome">Nome completo</label>
+          <input type="text" id="nome" placeholder="Digite seu nome completo" />
+        </div>
+        <div class="form-row2">
+          <div class="fgroup">
+            <label for="cpf">CPF/CNPJ</label>
+            <input type="text" id="cpf" placeholder="000.000.000-00" />
+          </div>
+          <div class="fgroup">
+            <label for="cel">Celular</label>
+            <input type="tel" id="cel" placeholder="(11) 90000-0000" />
+          </div>
+        </div>
+      </div>
+
+      <hr class="div" style="margin-top:16px;" />
+
+      <div class="section-title">Forma de pagamento</div>
+      <div class="pix-box">
+        <div class="pix-icon-bg">
+          <svg viewBox="0 0 24 24"><path d="M11.072 16.97a3.5 3.5 0 0 1-2.475-1.024L7.05 14.398a.65.65 0 0 0-.918 0l-1.554 1.555a3.5 3.5 0 0 1-2.475 1.024H1.1l2.866 2.866a4.81 4.81 0 0 0 6.804 0l2.872-2.872h-2.57zM3.97 8.046a3.5 3.5 0 0 1 2.475 1.024l1.555 1.555a.65.65 0 0 0 .918 0l1.553-1.553a3.5 3.5 0 0 1 2.475-1.024h2.57l-2.872-2.872a4.81 4.81 0 0 0-6.804 0L2.967 8.046h1.003z"/><path d="M21.83 10.876l-2.583-2.583a.6.6 0 0 1-.394.146h-2.083a2.31 2.31 0 0 0-1.633.676l-1.553 1.553a1.84 1.84 0 0 1-2.6 0L9.428 9.115a2.31 2.31 0 0 0-1.633-.676H5.146a.6.6 0 0 1-.395-.148L2.17 10.876a4.81 4.81 0 0 0 0 6.804l2.581 2.581a.6.6 0 0 1 .395-.148h2.649c.612 0 1.199.243 1.633.676l1.555 1.556a1.84 1.84 0 0 0 2.6 0l1.553-1.554a2.31 2.31 0 0 1 1.633-.676h2.083a.6.6 0 0 1 .394.147l2.583-2.583a4.81 4.81 0 0 0 0-6.803z"/></svg>
+        </div>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:#111;">Pix</div>
+          <div style="font-size:11px;color:#6b7280;margin-top:2px;line-height:1.5;">Aprovação rápida · pague com QR Code ou copia e cola</div>
+        </div>
+      </div>
+
+      <div class="detalhes-wrap">
+        <div class="detalhes-title">Detalhes da compra</div>
+        <div class="detalhes-item">
+          <div class="detalhes-nome">Revisão Nocaute OAB 46 – Direito do Trabalho – Acesso até a prova</div>
+          <div class="detalhes-preco">R$&nbsp;297,00</div>
+        </div>
+      </div>
+
+      <button class="btn-comprar" onclick="handleBuy()">Comprar agora</button>
+
+      <div class="protected-row">
+        <span style="font-size:12px;font-weight:300;color:#9ca3af;">Pagamento 100% seguro e protegido</span>
+      </div>
+
+    </div><!-- /card -->
+
+    <div class="declaracao-section">
+      <p class="declaracao-text">
+        Ao clicar em 'Comprar agora', eu declaro que li e concordo com os Termos de Uso e a Política de Privacidade de <strong>Vício de Uma Estudante</strong>, e que sou maior de idade ou autorizado e acompanhado por um responsável legal.
+      </p>
+      <div class="copyright">
+        Vício de Uma Estudante © 2026 - Todos os direitos reservados
+      </div>
+    </div>
+
+    <div class="trust-section">
+      <div class="trust-item">
+        <svg width="32" height="32" viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M26 2L5 11v14c0 13.25 9.02 25.63 21 29 11.98-3.37 21-15.75 21-29V11L26 2z" stroke="#7c3aed" stroke-width="3" fill="none"/>
+          <polyline points="16,26 22,32 36,18" stroke="#7c3aed" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <div class="trust-item-texts">
+          <strong>Compra segura</strong>
+          <span>Ambiente seguro e autenticado</span>
+        </div>
+      </div>
+      <div class="trust-item">
+        <svg width="36" height="36" viewBox="0 0 52 36" xmlns="http://www.w3.org/2000/svg">
+          <path d="M37.99 1.092a1.417 1.417 0 00-.629-.88 1.4 1.4 0 00-1.074-.182l-5.928 1.4L26 2.822l-4.359-1.392-5.928-1.4a1.4 1.4 0 00-1.074.182 1.417 1.417 0 00-.629.88L12.59 7H6.5A6.507 6.507 0 000 13.5v16A6.507 6.507 0 006.5 36h39a6.507 6.507 0 006.5-6.5v-16A6.507 6.507 0 0045.5 7h-6.09l-1.42-5.908z" fill="#7c3aed"/>
+          <path d="M26 22L4 10M26 22l22-12" stroke="#fff" stroke-width="2" fill="none"/>
+        </svg>
+        <div class="trust-item-texts">
+          <strong>Entregue via E-mail</strong>
+          <span>Acesso entregue por email</span>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /col-checkout -->
+</div><!-- /page-wrapper -->
+
+<a href="https://wa.me/5511920096589" target="_blank" rel="noopener" class="whatsapp-float" aria-label="Falar com o suporte no WhatsApp">
+  <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-1.745-.872-2.888-1.556-4.036-3.527-.305-.524.305-.487.873-1.62.099-.198.05-.371-.05-.519-.099-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.67-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.148.198 2.058 3.146 4.987 4.287 2.93 1.142 2.93.762 3.456.713.525-.05 1.758-.718 2.006-1.413.247-.694.247-1.29.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+    <path d="M12.004 2.003c-5.514 0-9.997 4.483-9.997 9.997 0 1.762.464 3.417 1.276 4.853L2 22l5.27-1.255a9.96 9.96 0 0 0 4.734 1.205h.004c5.514 0 9.997-4.483 9.997-9.997s-4.483-9.95-10.001-9.95zm5.85 15.85a8.26 8.26 0 0 1-5.853 2.425h-.003a8.26 8.26 0 0 1-4.205-1.151l-.301-.179-3.13.745.75-3.05-.196-.314a8.26 8.26 0 0 1-1.27-4.376c0-4.566 3.715-8.281 8.286-8.281 2.213 0 4.292.864 5.857 2.43a8.207 8.207 0 0 1 2.422 5.855 8.26 8.26 0 0 1-2.357 5.896z"/>
+  </svg>
+</a>
+
+<div id="pixModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:16px;padding:28px 24px;max-width:340px;width:90%;margin:auto;text-align:center;position:relative;max-height:90vh;overflow-y:auto;">
+    <button onclick="closeModal()" style="position:absolute;top:12px;right:14px;background:none;border:none;font-size:20px;cursor:pointer;color:#888;">✕</button>
+    <div id="modalContent"></div>
+  </div>
+</div>
+
+<script>
+  const PRODUTO_VALOR  = 297.00;
+  const PRODUTO_NOME   = 'Revisão Nocaute OAB 46 – Direito do Trabalho';
+  const MATERIA_SLUG   = 'trabalho';
+  const WHATSAPP_NUM   = '5511920096589';
+
+  document.getElementById('cpf').addEventListener('input', function(e) {
+    let v = e.target.value.replace(/\D/g,'').substring(0,11);
+    v = v.replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d{1,2})$/,'$1-$2');
+    e.target.value = v;
+  });
+
+  document.getElementById('cel').addEventListener('input', function(e) {
+    let v = e.target.value.replace(/\D/g,'').substring(0,11);
+    v = v.replace(/^(\d{2})(\d)/,'($1) $2').replace(/(\d{5})(\d)/,'$1-$2');
+    e.target.value = v;
+  });
+
+  function validarCPF(cpf) {
+    cpf = cpf.replace(/\D/g,'');
+    if (cpf.length !== 11 || /^(\d)\1+$/.test(cpf)) return false;
+    let soma = 0, resto;
+    for (let i=1; i<=9; i++) soma += parseInt(cpf[i-1]) * (11-i);
+    resto = (soma*10)%11;
+    if (resto===10||resto===11) resto=0;
+    if (resto!==parseInt(cpf[9])) return false;
+    soma=0;
+    for (let i=1; i<=10; i++) soma += parseInt(cpf[i-1]) * (12-i);
+    resto = (soma*10)%11;
+    if (resto===10||resto===11) resto=0;
+    return resto===parseInt(cpf[10]);
+  }
+
+  async function handleBuy() {
+    const nome  = document.getElementById('nome').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const email2= document.getElementById('email2').value.trim();
+    const cpf   = document.getElementById('cpf').value.trim();
+    const cel   = document.getElementById('cel').value.trim();
+
+    if (!nome)              return showErro('Por favor, preencha seu nome completo.');
+    if (!email || !email.includes('@')) return showErro('Por favor, informe um email válido.');
+    if (email !== email2)   return showErro('Os emails não coincidem.');
+    if (!validarCPF(cpf))   return showErro('CPF inválido. Verifique e tente novamente.');
+    if (cel.replace(/\D/g,'').length < 10) return showErro('Celular inválido.');
+
+    showModal(`
+      <div style="padding:20px 0;">
+        <div style="font-size:32px;margin-bottom:12px;">⏳</div>
+        <div style="font-size:15px;font-weight:700;color:#111;margin-bottom:6px;">Gerando seu PIX...</div>
+        <div style="font-size:13px;color:#888;">Aguarde um instante</div>
+      </div>
+    `);
+
+    try {
+      const res = await fetch('/api/criar-pix', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          valor: PRODUTO_VALOR,
+          email: email,
+          primeiro_nome: nome.split(' ')[0],
+          ultimo_nome: nome.split(' ').slice(1).join(' ') || nome.split(' ')[0],
+          cpf: cpf.replace(/\D/g,''),
+          materia: MATERIA_SLUG,
+          produto: PRODUTO_NOME
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        throw new Error(data.message || 'Não foi possível gerar o Pix.');
+      }
+
+      const pixPayload  = data.point_of_interaction?.transaction_data?.qr_code;
+      const pixQrBase64 = data.point_of_interaction?.transaction_data?.qr_code_base64;
+
+      if (!pixPayload) throw new Error('QR Code PIX não retornado.');
+      showPixQR(pixPayload, pixQrBase64, email, nome);
+
+    } catch (err) {
+      showModal(`
+        <div style="padding:20px 0;">
+          <div style="font-size:32px;margin-bottom:12px;">❌</div>
+          <div style="font-size:15px;font-weight:700;color:#e05252;margin-bottom:8px;">Erro ao processar</div>
+          <div style="font-size:13px;color:#666;margin-bottom:16px;">${err.message}</div>
+          <button onclick="closeModal()" style="background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;cursor:pointer;">Tentar novamente</button>
+        </div>
+      `);
+    }
+  }
+
+  function showPixQR(payload, qrBase64, email, nome) {
+    const linkWhats = 'https://wa.me/' + WHATSAPP_NUM + '?text=' + encodeURIComponent(
+      'Olá! Acabei de pagar o Pix da Revisão Nocaute OAB 46 - Direito do Trabalho.\nNome: ' + nome + '\nEmail: ' + email
+    );
+
+    showModal(`
+      <div>
+        <div style="font-size:14px;font-weight:700;color:#111;margin-bottom:4px;">Pague com PIX</div>
+        <div style="font-size:12px;color:#888;margin-bottom:14px;">Escaneie o QR Code ou copie o código</div>
+        <div id="qrcode" style="display:flex;justify-content:center;margin-bottom:14px;"></div>
+        <div style="background:#f5f3ff;border:1.5px solid #7c3aed;border-radius:10px;padding:12px 14px;margin-bottom:12px;">
+          <div style="font-size:10px;font-weight:700;color:#7c3aed;margin-bottom:6px;letter-spacing:.5px;text-transform:uppercase;">Código Pix Copia e Cola</div>
+          <div id="pixCode" style="font-size:9px;color:#333;word-break:break-all;line-height:1.6;font-family:monospace;background:#fff;border-radius:6px;padding:8px;border:1px solid #ddd;">${payload}</div>
+          <div style="margin-top:8px;font-size:9.5px;color:#666;">
+            <b>Beneficiário:</b> VICIO DE UMA ESTUDANTE<br/>
+            <b>Tipo de chave:</b> Chave aleatória<br/>
+            <b>Valor:</b> R$ 297,00
+          </div>
+        </div>
+        <button id="btnCopiarPix" onclick="copiarPix('${payload.replace(/'/g,"\\'")}' )" style="width:100%;background:#32bcad;color:#fff;border:none;border-radius:8px;padding:13px;font-size:15px;font-weight:800;cursor:pointer;margin-bottom:10px;">📋 Copiar código PIX</button>
+        <a href="${linkWhats}" target="_blank" rel="noopener" style="display:block;width:100%;background:#25D366;color:#fff;border:none;border-radius:8px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;text-decoration:none;box-sizing:border-box;">✅ Já paguei, confirmar no WhatsApp</a>
+        <div style="font-size:11px;color:#aaa;margin-top:10px;">O acesso será enviado para:<br><strong style="color:#555;">${email}</strong><br/>após a confirmação do pagamento.</div>
+      </div>
+    `);
+
+    setTimeout(() => {
+      if (qrBase64) {
+        document.getElementById('qrcode').innerHTML = '<img src="data:image/png;base64,' + qrBase64 + '" style="width:200px;height:200px;" />';
+      }
+    }, 100);
+  }
+
+  function copiarPix(texto) {
+    var btn = document.getElementById('btnCopiarPix');
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(texto).then(function() {
+        if (btn) { btn.textContent = '✅ Copiado!'; setTimeout(function(){ btn.textContent = '📋 Copiar código PIX'; }, 2500); }
+      }).catch(function() { _copiarFallback(texto, btn); });
+    } else { _copiarFallback(texto, btn); }
+  }
+
+  function _copiarFallback(texto, btn) {
+    var el = document.createElement('textarea');
+    el.value = texto; el.style.position = 'fixed'; el.style.left = '-9999px';
+    document.body.appendChild(el); el.focus(); el.select();
+    document.execCommand('copy'); document.body.removeChild(el);
+    if (btn) { btn.textContent = '✅ Copiado!'; setTimeout(function(){ btn.textContent = '📋 Copiar código PIX'; }, 2500); }
+  }
+
+  function showModal(html) {
+    document.getElementById('modalContent').innerHTML = html;
+    document.getElementById('pixModal').style.display = 'flex';
+  }
+
+  function closeModal() {
+    document.getElementById('pixModal').style.display = 'none';
+  }
+
+  function showErro(msg) {
+    showModal(`<div style="padding:20px 0;"><div style="font-size:32px;margin-bottom:12px;">⚠️</div><div style="font-size:14px;font-weight:700;color:#e05252;margin-bottom:10px;">${msg}</div><button onclick="closeModal()" style="background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;cursor:pointer;">OK</button></div>`);
+  }
+</script>
+</body>
+</html>
