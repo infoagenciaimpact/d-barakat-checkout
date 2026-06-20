@@ -133,6 +133,39 @@
     .detalhes-nome { font-size: 12.5px; font-weight: 700; color: #111; flex: 1; line-height: 1.4; }
     .detalhes-preco { font-size: 12.5px; color: #111; white-space: nowrap; font-weight: 500; }
 
+
+    /* ── ORDER BUMP ── */
+    .orderbump-wrap { margin-top: 16px; }
+    .orderbump-title { font-size: 13.5px; font-weight: 700; color: #111; margin-bottom: 10px; }
+    .orderbump-box {
+      border: 1.5px solid #7c3aed;
+      border-radius: 10px;
+      padding: 14px;
+      display: flex;
+      gap: 12px;
+      background: #faf8ff;
+      cursor: pointer;
+      transition: background .15s, border-color .15s;
+    }
+    .orderbump-box.selecionado {
+      background: #f0fdf4;
+      border-color: #22c55e;
+    }
+    .orderbump-img {
+      width: 64px; height: 64px; border-radius: 8px; object-fit: cover; flex-shrink: 0;
+    }
+    .orderbump-info { flex: 1; min-width: 0; }
+    .orderbump-info h4 { font-size: 13px; font-weight: 700; color: #111; margin-bottom: 2px; line-height: 1.3; }
+    .orderbump-info p { font-size: 11px; color: #6b7280; line-height: 1.45; margin-bottom: 6px; }
+    .orderbump-preco-row { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+    .orderbump-preco-de { font-size: 11px; color: #9ca3af; text-decoration: line-through; }
+    .orderbump-preco-por { font-size: 15px; font-weight: 800; color: #16a34a; }
+    .orderbump-checkbox-row {
+      display: flex; align-items: center; gap: 8px; margin-top: 8px;
+      font-size: 12px; font-weight: 600; color: #374151;
+    }
+    .orderbump-checkbox-row input { width: 18px; height: 18px; accent-color: #22c55e; cursor: pointer; flex-shrink: 0; }
+
     .btn-comprar {
       display: block; width: 100%; padding: 14px 16px; background: #27ae60;
       color: #fff; font-size: 15px; font-weight: 700; border: none; border-radius: 6px;
@@ -256,9 +289,36 @@
           <div class="detalhes-nome">Método VDE - 2ª Fase OAB Penal – Acesso até a prova</div>
           <div class="detalhes-preco">R$&nbsp;297,00</div>
         </div>
+        <div class="detalhes-item" id="detalhesOrderbumpItem" style="display:none;margin-top:6px;">
+          <div class="detalhes-nome">Gabaritaço OAB - 2ª Fase Penal</div>
+          <div class="detalhes-preco">R$&nbsp;67,00</div>
+        </div>
+        <div class="detalhes-item" id="detalhesTotalItem" style="display:none;margin-top:6px;border:none;background:#f5f3ff;">
+          <div class="detalhes-nome" style="font-weight:800;">Total</div>
+          <div class="detalhes-preco" id="detalhesTotalValor" style="font-weight:800;color:#5b21b6;font-size:14px;">R$&nbsp;364,00</div>
+        </div>
       </div>
 
-      <button class="btn-comprar" onclick="handleBuy()">Comprar agora</button>
+      <div class="orderbump-wrap">
+        <div class="orderbump-title">Aproveite e compre junto:</div>
+        <div class="orderbump-box" id="orderbumpBox" onclick="toggleOrderbump(event)">
+          <img src="data:image/jpeg;base64,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" alt="Gabaritaço OAB - 2ª Fase Penal" class="orderbump-img" />
+          <div class="orderbump-info">
+            <h4>Gabaritaço OAB - 2ª Fase Penal</h4>
+            <p>Material objetivo de revisão final, só com o que cai na 2ª fase. Oferta exclusiva nesta página!</p>
+            <div class="orderbump-preco-row">
+              <span class="orderbump-preco-de">R$ 97,00</span>
+              <span class="orderbump-preco-por">R$ 67,00</span>
+            </div>
+            <label class="orderbump-checkbox-row">
+              <input type="checkbox" id="orderbumpCheckbox" onchange="onOrderbumpChange()" />
+              Adicionar este produto
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn-comprar" id="btnComprar" onclick="handleBuy()">Comprar agora</button>
 
       <div class="protected-row">
         <span style="font-size:12px;font-weight:300;color:#9ca3af;">Pagamento 100% seguro e protegido</span>
@@ -319,6 +379,44 @@
   const PRODUTO_VALOR  = 297.00;
   const PRODUTO_NOME   = 'Método VDE - 2ª Fase OAB Penal';
   const MATERIA_SLUG   = 'penal';
+  const ORDERBUMP_VALOR = 67.00;
+  const ORDERBUMP_NOME  = 'Gabaritaço OAB - 2ª Fase Penal';
+  let orderbumpAtivo = false;
+
+  function getValorTotal() {
+    return orderbumpAtivo ? (PRODUTO_VALOR + ORDERBUMP_VALOR) : PRODUTO_VALOR;
+  }
+
+  function toggleOrderbump(e) {
+    if (e.target && e.target.tagName === 'INPUT') return; // evita duplo toggle ao clicar direto no checkbox
+    const checkbox = document.getElementById('orderbumpCheckbox');
+    checkbox.checked = !checkbox.checked;
+    onOrderbumpChange();
+  }
+
+  function onOrderbumpChange() {
+    const checkbox = document.getElementById('orderbumpCheckbox');
+    const box = document.getElementById('orderbumpBox');
+    orderbumpAtivo = checkbox.checked;
+    box.classList.toggle('selecionado', orderbumpAtivo);
+
+    const itemBump = document.getElementById('detalhesOrderbumpItem');
+    const itemTotal = document.getElementById('detalhesTotalItem');
+    const totalValor = document.getElementById('detalhesTotalValor');
+    const btn = document.getElementById('btnComprar');
+
+    if (orderbumpAtivo) {
+      itemBump.style.display = 'flex';
+      itemTotal.style.display = 'flex';
+      const total = getValorTotal();
+      totalValor.textContent = 'R$ ' + total.toFixed(2).replace('.', ',');
+      btn.textContent = 'Comprar agora · R$ ' + total.toFixed(2).replace('.', ',');
+    } else {
+      itemBump.style.display = 'none';
+      itemTotal.style.display = 'none';
+      btn.textContent = 'Comprar agora';
+    }
+  }
   const WHATSAPP_NUM   = '5511920096589';
 
   document.getElementById('cpf').addEventListener('input', function(e) {
@@ -374,13 +472,14 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          valor: PRODUTO_VALOR,
+          valor: getValorTotal(),
           email: email,
           primeiro_nome: nome.split(' ')[0],
           ultimo_nome: nome.split(' ').slice(1).join(' ') || nome.split(' ')[0],
           cpf: cpf.replace(/\D/g,''),
           materia: MATERIA_SLUG,
-          produto: PRODUTO_NOME
+          produto: orderbumpAtivo ? (PRODUTO_NOME + ' + ' + ORDERBUMP_NOME) : PRODUTO_NOME,
+          orderbump: orderbumpAtivo
         })
       });
 
@@ -423,7 +522,7 @@
           <div style="margin-top:8px;font-size:9.5px;color:#666;">
             <b>Beneficiário:</b> VICIO DE UMA ESTUDANTE<br/>
             <b>Tipo de chave:</b> Chave aleatória<br/>
-            <b>Valor:</b> R$ 297,00
+            <b>Valor:</b> R$ ${getValorTotal().toFixed(2).replace('.', ',')}
           </div>
         </div>
         <button id="btnCopiarPix" onclick="copiarPix('${payload.replace(/'/g,"\\'")}' )" style="width:100%;background:#32bcad;color:#fff;border:none;border-radius:8px;padding:13px;font-size:15px;font-weight:800;cursor:pointer;margin-bottom:10px;">📋 Copiar código PIX</button>
