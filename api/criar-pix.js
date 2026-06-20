@@ -11,10 +11,14 @@ const MERCHANT_CITY  = (process.env.PIX_MERCHANT_CITY || 'FORTALEZA').substring(
 // ────────────────────────────────────────────────────────────────
 
 function emvField(id, value) {
-  const len = String(value.length).padStart(2, '0');
+  value = String(value || '');
+
+  const len = Buffer.byteLength(value, 'utf8')
+    .toString()
+    .padStart(2, '0');
+
   return `${id}${len}${value}`;
 }
-
 function crc16(payload) {
   let crc = 0xFFFF;
   for (let i = 0; i < payload.length; i++) {
@@ -50,12 +54,15 @@ function removerAcentos(str) {
 }
 
 function limparDescricaoPix(texto) {
-  return texto
+  return String(texto || '')
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^A-Za-z0-9 .,-]/g, '')
-    .substring(0, 25)
-    .toUpperCase();
+    .replace(/[\u0300-\u036f]/g, '')      // remove acentos
+    .replace(/[^\x20-\x7E]/g, '')         // remove qualquer caractere unicode fora do ASCII
+    .replace(/[^A-Za-z0-9 ]/g, ' ')       // mantém apenas letras, números e espaço
+    .replace(/\s+/g, ' ')                 // remove espaços duplicados
+    .trim()
+    .toUpperCase()
+    .substring(0, 25);
 }
 
 function gerarPayloadPix({ chave, nome, cidade, valor, txid, descricao }) {
@@ -66,8 +73,8 @@ function gerarPayloadPix({ chave, nome, cidade, valor, txid, descricao }) {
   const key = emvField('01', chave);
 
   const descLimpa = descricao
-    ? limparDescricaoPix(descricao)
-    : '';
+  ? limparDescricaoPix(descricao)
+  : '';
 
   const desc = descLimpa
     ? emvField('02', descLimpa)
