@@ -451,15 +451,6 @@ function removerAcentos(str) {
     .toUpperCase();
 }
 
-function limparDescricaoPix(texto) {
-  return String(texto || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^A-Za-z0-9 .,-]/g, '')
-    .substring(0, 25)
-    .toUpperCase();
-}
-
 function gerarTxid() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let txid = '';
@@ -471,17 +462,14 @@ function gerarTxid() {
   return txid;
 }
 
-function gerarPayloadPix(valor, descricao) {
+function gerarPayloadPix(valor) {
   const valorFormatado = Number(valor).toFixed(2);
   const txid = gerarTxid();
 
   const gui = emvField('00', 'br.gov.bcb.pix');
   const key = emvField('01', PIX_KEY);
 
-  const descLimpa = limparDescricaoPix(descricao);
-  const desc = descLimpa ? emvField('02', descLimpa) : '';
-
-  const merchantAccountInfo = emvField('26', gui + key + desc);
+  const merchantAccountInfo = emvField('26', gui + key);
 
   let payload =
     emvField('00', '01') +
@@ -672,20 +660,34 @@ function copiarPix() {
       setTimeout(function() {
         btn.textContent = '📋 Copiar código PIX';
       }, 2500);
+    }).catch(function() {
+      copiarPixFallback(texto, btn);
     });
   } else {
-    const el = document.createElement('textarea');
-    el.value = texto;
-    document.body.appendChild(el);
-    el.select();
-    document.execCommand('copy');
-    document.body.removeChild(el);
-
-    btn.textContent = '✅ Copiado!';
-    setTimeout(function() {
-      btn.textContent = '📋 Copiar código PIX';
-    }, 2500);
+    copiarPixFallback(texto, btn);
   }
+}
+
+function copiarPixFallback(texto, btn) {
+  const el = document.createElement('textarea');
+  el.value = texto;
+  el.setAttribute('readonly', '');
+  el.style.position = 'fixed';
+  el.style.left = '-9999px';
+  el.style.top = '-9999px';
+
+  document.body.appendChild(el);
+  el.focus();
+  el.select();
+  el.setSelectionRange(0, el.value.length);
+
+  document.execCommand('copy');
+  document.body.removeChild(el);
+
+  btn.textContent = '✅ Copiado!';
+  setTimeout(function() {
+    btn.textContent = '📋 Copiar código PIX';
+  }, 2500);
 }
 
 function handleBuy() {
@@ -710,11 +712,7 @@ function handleBuy() {
     return;
   }
 
-  const descricao = orderbumpAtivo
-    ? PRODUTO_NOME + ' + ' + ORDERBUMP_NOME
-    : PRODUTO_NOME;
-
-  const payload = gerarPayloadPix(getValorTotal(), descricao);
+  const payload = gerarPayloadPix(getValorTotal());
 
   showPixQR(payload, email, nome);
 }
