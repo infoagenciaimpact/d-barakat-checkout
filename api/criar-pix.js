@@ -6,6 +6,11 @@ const PIX_KEY = process.env.PIX_KEY || '13871026-0aef-4a12-a405-1a42628144c5';
 const MERCHANT_NAME = process.env.PIX_MERCHANT_NAME || 'VICIO DE UMA ESTUDANTE';
 const MERCHANT_CITY = process.env.PIX_MERCHANT_CITY || 'FORTALEZA';
 
+// Descrição fixa exibida no app do banco ao escanear o Pix (campo 02,
+// dentro do Merchant Account Information). É travada manualmente aqui —
+// nunca deve receber o nome do produto/curso, só este texto fixo.
+const PIX_DESCRICAO = process.env.PIX_DESCRICAO || 'VICIO DE UMA ESTUDANTE';
+
 // IMPORTANTE: o tamanho de cada campo EMV deve ser contado em BYTES (UTF-8),
 // não em caracteres. Isso evita corromper o payload quando há qualquer
 // caractere fora do ASCII puro escapando para esses campos.
@@ -31,12 +36,12 @@ function crc16(payload) {
   return crc.toString(16).toUpperCase().padStart(4, '0');
 }
 
-// Usado SOMENTE para nome do beneficiário e cidade (campos 59 e 60),
-// que exigem texto maiúsculo, sem acento e sem caracteres especiais.
-// Esta função NUNCA deve ser usada para gerar um campo de descrição
-// dentro do payload Pix — o BR Code não tem (e não deve ter) um campo
-// de "descrição do produto"; isso pertence apenas aos metadados da
-// nossa própria aplicação, nunca ao EMV/QR Code em si.
+// Usado para nome do beneficiário, cidade (campos 59 e 60) e para a
+// descrição fixa (campo 02), que exigem texto maiúsculo, sem acento e
+// sem caracteres especiais. Esta função NUNCA deve receber o nome do
+// produto/curso — apenas o texto fixo PIX_DESCRICAO definido acima.
+// O BR Code não tem (e não deve ter) um campo de "descrição do produto"
+// dinâmico; isso pertence aos metadados da nossa própria aplicação.
 function limparTexto(str, max) {
   return String(str || '')
     .normalize('NFD')
@@ -73,9 +78,9 @@ function gerarTxid() {
   return txid;
 }
 
-// Gera o payload Pix (BR Code) EMV puro: chave aleatória + valor + txid.
-// Deliberadamente NÃO inclui nenhum campo de descrição/produto — isso
-// nunca deve entrar no payload EMV, só nos metadados internos da API.
+// Gera o payload Pix (BR Code) EMV puro: chave aleatória + descrição
+// fixa + valor + txid. O campo de descrição (02) é sempre o texto fixo
+// PIX_DESCRICAO — nunca o nome do produto/curso vindo da requisição.
 function gerarPayloadPix({ valor }) {
   const valorFormatado = limparValor(valor);
   const txid = gerarTxid();
@@ -83,7 +88,8 @@ function gerarPayloadPix({ valor }) {
   const merchantAccountInfo = emvField(
     '26',
     emvField('00', 'br.gov.bcb.pix') +
-    emvField('01', PIX_KEY)
+    emvField('01', PIX_KEY) +
+    emvField('02', limparTexto(PIX_DESCRICAO, 25))
   );
 
   const payloadSemCRC =
