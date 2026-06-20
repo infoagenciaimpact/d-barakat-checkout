@@ -49,27 +49,63 @@ function removerAcentos(str) {
     .toUpperCase();
 }
 
+function limparDescricaoPix(texto) {
+  return texto
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^A-Za-z0-9 .,-]/g, '')
+    .substring(0, 25)
+    .toUpperCase();
+}
+
 function gerarPayloadPix({ chave, nome, cidade, valor, txid, descricao }) {
+
   const valorFormatado = Number(valor).toFixed(2);
 
-  const gui   = emvField('00', 'br.gov.bcb.pix');
-  const key   = emvField('01', chave);
-  const desc  = descricao ? emvField('02', descricao.substring(0, 25)) : '';
-  const merchantAccountInfo = emvField('26', gui + key + desc);
+  const gui = emvField('00', 'br.gov.bcb.pix');
+  const key = emvField('01', chave);
+
+  const descLimpa = descricao
+    ? limparDescricaoPix(descricao)
+    : '';
+
+  const desc = descLimpa
+    ? emvField('02', descLimpa)
+    : '';
+
+  const merchantAccountInfo = emvField(
+    '26',
+    gui + key + desc
+  );
 
   const merchantCategoryCode = emvField('52', '0000');
-  const transactionCurrency  = emvField('53', '986'); // BRL
-  const transactionAmount    = emvField('54', valorFormatado);
-  const countryCode          = emvField('58', 'BR');
-  const merchantNameField    = emvField('59', removerAcentos(nome));
-  const merchantCityField    = emvField('60', removerAcentos(cidade));
+  const transactionCurrency = emvField('53', '986');
+  const transactionAmount = emvField('54', valorFormatado);
+  const countryCode = emvField('58', 'BR');
 
-  const additionalDataField = emvField('05', txid);
-  const additionalData      = emvField('62', additionalDataField);
+  const merchantNameField = emvField(
+    '59',
+    removerAcentos(nome).substring(0, 25)
+  );
+
+  const merchantCityField = emvField(
+    '60',
+    removerAcentos(cidade).substring(0, 15)
+  );
+
+  const additionalDataField = emvField(
+    '05',
+    txid.substring(0, 25)
+  );
+
+  const additionalData = emvField(
+    '62',
+    additionalDataField
+  );
 
   let payload =
     emvField('00', '01') +
-    emvField('01', '12') + // Pix estático com valor definido
+    emvField('01', '11') +
     merchantAccountInfo +
     merchantCategoryCode +
     transactionCurrency +
@@ -81,6 +117,7 @@ function gerarPayloadPix({ chave, nome, cidade, valor, txid, descricao }) {
     '6304';
 
   const crc = crc16(payload);
+
   return payload + crc;
 }
 
