@@ -464,7 +464,6 @@ function gerarTxid() {
 
 function gerarPayloadPix(valor) {
   const valorFormatado = Number(valor).toFixed(2);
-  const txid = gerarTxid();
 
   const gui = emvField('00', 'br.gov.bcb.pix');
   const key = emvField('01', PIX_KEY);
@@ -473,7 +472,7 @@ function gerarPayloadPix(valor) {
 
   let payload =
     emvField('00', '01') +
-    emvField('01', '11') +
+    emvField('01', '12') +
     merchantAccountInfo +
     emvField('52', '0000') +
     emvField('53', '986') +
@@ -481,7 +480,7 @@ function gerarPayloadPix(valor) {
     emvField('58', 'BR') +
     emvField('59', removerAcentos(MERCHANT_NAME).substring(0, 25)) +
     emvField('60', removerAcentos(MERCHANT_CITY).substring(0, 15)) +
-    emvField('62', emvField('05', txid)) +
+    emvField('62', emvField('05', '***')) +
     '6304';
 
   return payload + crc16(payload);
