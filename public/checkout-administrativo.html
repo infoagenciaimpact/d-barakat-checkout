@@ -432,7 +432,7 @@
       itemBump.style.display = 'flex';
       itemTotal.style.display = 'flex';
       const total = getValorTotal();
-      totalValor.textContent = 'R$ ' + total.toFixed(2).replace('.', ',');
+      totalValor.textContent = 'R$ ' + total.toFixed(2).replace('.', ',');
       btn.textContent = 'Comprar agora - R$ ' + total.toFixed(2).replace('.', ',');
     } else {
       itemBump.style.display = 'none';
@@ -471,15 +471,21 @@
 
   // =========================
   // PIX NATIVO NO CHECKOUT
-  // Sem API, sem gateway e SEM descricao no BR Code
+  // Gerado 100% no navegador, sem API/backend.
+  // Descricao fixa (campo 02) travada como "VICIO DE UMA ESTUDANTE" -
+  // nunca o nome do produto/curso.
   // =========================
   const PIX_KEY = '13871026-0aef-4a12-a405-1a42628144c5';
   const PIX_MERCHANT_NAME = 'VICIO DE UMA ESTUDANTE';
   const PIX_MERCHANT_CITY = 'FORTALEZA';
+  const PIX_DESCRICAO = 'VICIO DE UMA ESTUDANTE';
 
+  // Tamanho de cada campo EMV contado em BYTES (UTF-8), nao em caracteres,
+  // para nunca corromper o payload mesmo se algum texto tiver acento.
   function emvField(id, value) {
     value = String(value || '');
-    const len = new TextEncoder().encode(value).length.toString().padStart(2, '0');
+    const byteLength = new TextEncoder().encode(value).length;
+    const len = byteLength.toString().padStart(2, '0');
     return `${id}${len}${value}`;
   }
 
@@ -502,6 +508,8 @@
     return crc.toString(16).toUpperCase().padStart(4, '0');
   }
 
+  // Usado apenas para beneficiario, cidade e a descricao FIXA do Pix -
+  // nunca para o nome do produto/curso.
   function limparTextoPix(str, max) {
     return String(str || '')
       .normalize('NFD')
@@ -537,7 +545,8 @@
     const merchantAccountInfo = emvField(
       '26',
       emvField('00', 'br.gov.bcb.pix') +
-      emvField('01', PIX_KEY)
+      emvField('01', PIX_KEY) +
+      emvField('02', limparTextoPix(PIX_DESCRICAO, 25))
     );
 
     const payloadSemCRC =
@@ -594,7 +603,7 @@
 
   function showPixQR(payload, email, nome) {
     const linkWhats = 'https://wa.me/' + WHATSAPP_NUM + '?text=' + encodeURIComponent(
-      'Ola! Acabei de pagar o Pix do Metodo VDE 2 Fase OAB Administrativo.\nNome: ' + nome + '\nEmail: ' + email
+      'Ola! Acabei de pagar o Pix do ' + PRODUTO_NOME + '.\nNome: ' + nome + '\nEmail: ' + email
     );
 
     showModal(`

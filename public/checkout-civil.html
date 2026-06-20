@@ -225,6 +225,7 @@
       .whatsapp-float { bottom: 26px; right: 26px; }
     }
   </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
 
@@ -430,8 +431,8 @@
       itemBump.style.display = 'flex';
       itemTotal.style.display = 'flex';
       const total = getValorTotal();
-      totalValor.textContent = 'R$ ' + total.toFixed(2).replace('.', ',');
-      btn.textContent = 'Comprar agora · R$ ' + total.toFixed(2).replace('.', ',');
+      totalValor.textContent = 'R$ ' + total.toFixed(2).replace('.', ',');
+      btn.textContent = 'Comprar agora - R$ ' + total.toFixed(2).replace('.', ',');
     } else {
       itemBump.style.display = 'none';
       itemTotal.style.display = 'none';
@@ -467,6 +468,102 @@
     return resto===parseInt(cpf[10]);
   }
 
+  // =========================
+  // PIX NATIVO NO CHECKOUT
+  // Gerado 100% no navegador, sem API/backend.
+  // Descricao fixa (campo 02) travada como "VICIO DE UMA ESTUDANTE" -
+  // nunca o nome do produto/curso.
+  // =========================
+  const PIX_KEY = '13871026-0aef-4a12-a405-1a42628144c5';
+  const PIX_MERCHANT_NAME = 'VICIO DE UMA ESTUDANTE';
+  const PIX_MERCHANT_CITY = 'FORTALEZA';
+  const PIX_DESCRICAO = 'VICIO DE UMA ESTUDANTE';
+
+  // Tamanho de cada campo EMV contado em BYTES (UTF-8), nao em caracteres,
+  // para nunca corromper o payload mesmo se algum texto tiver acento.
+  function emvField(id, value) {
+    value = String(value || '');
+    const byteLength = new TextEncoder().encode(value).length;
+    const len = byteLength.toString().padStart(2, '0');
+    return `${id}${len}${value}`;
+  }
+
+  function crc16(payload) {
+    let crc = 0xFFFF;
+
+    for (let i = 0; i < payload.length; i++) {
+      crc ^= payload.charCodeAt(i) << 8;
+
+      for (let j = 0; j < 8; j++) {
+        if ((crc & 0x8000) !== 0) {
+          crc = (crc << 1) ^ 0x1021;
+        } else {
+          crc = crc << 1;
+        }
+        crc &= 0xFFFF;
+      }
+    }
+
+    return crc.toString(16).toUpperCase().padStart(4, '0');
+  }
+
+  // Usado apenas para beneficiario, cidade e a descricao FIXA do Pix -
+  // nunca para o nome do produto/curso.
+  function limparTextoPix(str, max) {
+    return String(str || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^A-Za-z0-9 ]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toUpperCase()
+      .substring(0, max);
+  }
+
+  function limparValorPix(valor) {
+    const numero = Number(String(valor).replace(',', '.').replace(/[^\d.]/g, ''));
+    if (!Number.isFinite(numero) || numero <= 0) {
+      throw new Error('Valor Pix invalido.');
+    }
+    return numero.toFixed(2);
+  }
+
+  function gerarTxidPix() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let txid = '';
+    for (let i = 0; i < 14; i++) {
+      txid += chars[Math.floor(Math.random() * chars.length)];
+    }
+    return txid;
+  }
+
+  function gerarPayloadPixNativo(valor) {
+    const valorFormatado = limparValorPix(valor);
+    const txid = gerarTxidPix();
+
+    const merchantAccountInfo = emvField(
+      '26',
+      emvField('00', 'br.gov.bcb.pix') +
+      emvField('01', PIX_KEY) +
+      emvField('02', limparTextoPix(PIX_DESCRICAO, 25))
+    );
+
+    const payloadSemCRC =
+      emvField('00', '01') +
+      emvField('01', '11') +
+      merchantAccountInfo +
+      emvField('52', '0000') +
+      emvField('53', '986') +
+      emvField('54', valorFormatado) +
+      emvField('58', 'BR') +
+      emvField('59', limparTextoPix(PIX_MERCHANT_NAME, 25)) +
+      emvField('60', limparTextoPix(PIX_MERCHANT_CITY, 15)) +
+      emvField('62', emvField('05', txid)) +
+      '6304';
+
+    return payloadSemCRC + crc16(payloadSemCRC);
+  }
+
   async function handleBuy() {
     const nome  = document.getElementById('nome').value.trim();
     const email = document.getElementById('email').value.trim();
@@ -475,10 +572,10 @@
     const cel   = document.getElementById('cel').value.trim();
 
     if (!nome)              return showErro('Por favor, preencha seu nome completo.');
-    if (!email || !email.includes('@')) return showErro('Por favor, informe um email válido.');
-    if (email !== email2)   return showErro('Os emails não coincidem.');
-    if (!validarCPF(cpf))   return showErro('CPF inválido. Verifique e tente novamente.');
-    if (cel.replace(/\D/g,'').length < 10) return showErro('Celular inválido.');
+    if (!email || !email.includes('@')) return showErro('Por favor, informe um email valido.');
+    if (email !== email2)   return showErro('Os emails nao coincidem.');
+    if (!validarCPF(cpf))   return showErro('CPF invalido. Verifique e tente novamente.');
+    if (cel.replace(/\D/g,'').length < 10) return showErro('Celular invalido.');
 
     showModal(`
       <div style="padding:20px 0;">
@@ -489,37 +586,13 @@
     `);
 
     try {
-      const res = await fetch('/api/criar-pix', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          valor: getValorTotal(),
-          email: email,
-          primeiro_nome: nome.split(' ')[0],
-          ultimo_nome: nome.split(' ').slice(1).join(' ') || nome.split(' ')[0],
-          cpf: cpf.replace(/\D/g,''),
-          materia: MATERIA_SLUG,
-          produto: orderbumpAtivo ? (PRODUTO_NOME + ' + ' + ORDERBUMP_NOME) : PRODUTO_NOME,
-          orderbump: orderbumpAtivo
-        })
-      });
-
-      const data = await res.json();
-      if (!res.ok || data.error) {
-        throw new Error(data.message || 'Não foi possível gerar o Pix.');
-      }
-
-      const pixPayload  = data.point_of_interaction?.transaction_data?.qr_code;
-      const pixQrBase64 = data.point_of_interaction?.transaction_data?.qr_code_base64;
-
-      if (!pixPayload) throw new Error('QR Code PIX não retornado.');
-      showPixQR(pixPayload, pixQrBase64, email, nome);
-
+      const pixPayload = gerarPayloadPixNativo(getValorTotal());
+      showPixQR(pixPayload, email, nome);
     } catch (err) {
       showModal(`
         <div style="padding:20px 0;">
           <div style="font-size:32px;margin-bottom:12px;">❌</div>
-          <div style="font-size:15px;font-weight:700;color:#e05252;margin-bottom:8px;">Erro ao processar</div>
+          <div style="font-size:15px;font-weight:700;color:#e05252;margin-bottom:8px;">Erro ao gerar Pix</div>
           <div style="font-size:13px;color:#666;margin-bottom:16px;">${err.message}</div>
           <button onclick="closeModal()" style="background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;cursor:pointer;">Tentar novamente</button>
         </div>
@@ -527,34 +600,45 @@
     }
   }
 
-  function showPixQR(payload, qrBase64, email, nome) {
+  function showPixQR(payload, email, nome) {
     const linkWhats = 'https://wa.me/' + WHATSAPP_NUM + '?text=' + encodeURIComponent(
-      'Olá! Acabei de pagar o Pix do Método VDE - 2ª Fase OAB Civil.\nNome: ' + nome + '\nEmail: ' + email
+      'Ola! Acabei de pagar o Pix do ' + PRODUTO_NOME + '.\nNome: ' + nome + '\nEmail: ' + email
     );
 
     showModal(`
       <div>
         <div style="font-size:14px;font-weight:700;color:#111;margin-bottom:4px;">Pague com PIX</div>
-        <div style="font-size:12px;color:#888;margin-bottom:14px;">Escaneie o QR Code ou copie o código</div>
+        <div style="font-size:12px;color:#888;margin-bottom:14px;">Escaneie o QR Code ou copie o codigo</div>
         <div id="qrcode" style="display:flex;justify-content:center;margin-bottom:14px;"></div>
         <div style="background:#f5f3ff;border:1.5px solid #7c3aed;border-radius:10px;padding:12px 14px;margin-bottom:12px;">
-          <div style="font-size:10px;font-weight:700;color:#7c3aed;margin-bottom:6px;letter-spacing:.5px;text-transform:uppercase;">Código Pix Copia e Cola</div>
+          <div style="font-size:10px;font-weight:700;color:#7c3aed;margin-bottom:6px;letter-spacing:.5px;text-transform:uppercase;">Codigo Pix Copia e Cola</div>
           <div id="pixCode" style="font-size:9px;color:#333;word-break:break-all;line-height:1.6;font-family:monospace;background:#fff;border-radius:6px;padding:8px;border:1px solid #ddd;">${payload}</div>
           <div style="margin-top:8px;font-size:9.5px;color:#666;">
-            <b>Beneficiário:</b> VICIO DE UMA ESTUDANTE<br/>
-            <b>Tipo de chave:</b> Chave aleatória<br/>
+            <b>Beneficiario:</b> VICIO DE UMA ESTUDANTE<br/>
+            <b>Tipo de chave:</b> Chave aleatoria<br/>
             <b>Valor:</b> R$ ${getValorTotal().toFixed(2).replace('.', ',')}
           </div>
         </div>
-        <button id="btnCopiarPix" onclick="copiarPix('${payload.replace(/'/g,"\\'")}' )" style="width:100%;background:#32bcad;color:#fff;border:none;border-radius:8px;padding:13px;font-size:15px;font-weight:800;cursor:pointer;margin-bottom:10px;">📋 Copiar código PIX</button>
-        <a href="${linkWhats}" target="_blank" rel="noopener" style="display:block;width:100%;background:#25D366;color:#fff;border:none;border-radius:8px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;text-decoration:none;box-sizing:border-box;">✅ Já paguei, confirmar no WhatsApp</a>
-        <div style="font-size:11px;color:#aaa;margin-top:10px;">O acesso será enviado para:<br><strong style="color:#555;">${email}</strong><br/>após a confirmação do pagamento.</div>
+        <button id="btnCopiarPix" onclick="copiarPix('${payload.replace(/'/g,"\\'")}' )" style="width:100%;background:#32bcad;color:#fff;border:none;border-radius:8px;padding:13px;font-size:15px;font-weight:800;cursor:pointer;margin-bottom:10px;">📋 Copiar codigo PIX</button>
+        <a href="${linkWhats}" target="_blank" rel="noopener" style="display:block;width:100%;background:#25D366;color:#fff;border:none;border-radius:8px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;text-decoration:none;box-sizing:border-box;">✅ Ja paguei, confirmar no WhatsApp</a>
+        <div style="font-size:11px;color:#aaa;margin-top:10px;">O acesso sera enviado para:<br><strong style="color:#555;">${email}</strong><br/>apos a confirmacao do pagamento.</div>
       </div>
     `);
 
     setTimeout(() => {
-      if (qrBase64) {
-        document.getElementById('qrcode').innerHTML = '<img src="data:image/png;base64,' + qrBase64 + '" style="width:200px;height:200px;" />';
+      const qrEl = document.getElementById('qrcode');
+      if (!qrEl) return;
+
+      if (typeof QRCode !== 'undefined') {
+        qrEl.innerHTML = '';
+        new QRCode(qrEl, {
+          text: payload,
+          width: 200,
+          height: 200,
+          correctLevel: QRCode.CorrectLevel.M
+        });
+      } else {
+        qrEl.innerHTML = '<div style="font-size:11px;color:#e05252;line-height:1.5;">QR Code nao carregou. Use o codigo copia e cola abaixo.</div>';
       }
     }, 100);
   }
@@ -563,7 +647,7 @@
     var btn = document.getElementById('btnCopiarPix');
     if (navigator.clipboard && window.isSecureContext) {
       navigator.clipboard.writeText(texto).then(function() {
-        if (btn) { btn.textContent = '✅ Copiado!'; setTimeout(function(){ btn.textContent = '📋 Copiar código PIX'; }, 2500); }
+        if (btn) { btn.textContent = '✅ Copiado!'; setTimeout(function(){ btn.textContent = '📋 Copiar codigo PIX'; }, 2500); }
       }).catch(function() { _copiarFallback(texto, btn); });
     } else { _copiarFallback(texto, btn); }
   }
@@ -573,7 +657,7 @@
     el.value = texto; el.style.position = 'fixed'; el.style.left = '-9999px';
     document.body.appendChild(el); el.focus(); el.select();
     document.execCommand('copy'); document.body.removeChild(el);
-    if (btn) { btn.textContent = '✅ Copiado!'; setTimeout(function(){ btn.textContent = '📋 Copiar código PIX'; }, 2500); }
+    if (btn) { btn.textContent = '✅ Copiado!'; setTimeout(function(){ btn.textContent = '📋 Copiar codigo PIX'; }, 2500); }
   }
 
   function showModal(html) {
