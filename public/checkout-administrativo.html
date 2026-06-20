@@ -396,6 +396,8 @@
   </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
 <script>
   const PRODUTO_VALOR  = 297.00;
   const PRODUTO_NOME   = 'Método VDE - 2ª Fase OAB Administrativo';
@@ -467,6 +469,93 @@
     return resto===parseInt(cpf[10]);
   }
 
+  // =========================
+  // PIX NATIVO NO CHECKOUT
+  // Sem API, sem gateway e SEM descricao no BR Code
+  // =========================
+  const PIX_KEY = '13871026-0aef-4a12-a405-1a42628144c5';
+  const PIX_MERCHANT_NAME = 'VICIO DE UMA ESTUDANTE';
+  const PIX_MERCHANT_CITY = 'FORTALEZA';
+
+  function emvField(id, value) {
+    value = String(value || '');
+    const len = new TextEncoder().encode(value).length.toString().padStart(2, '0');
+    return `${id}${len}${value}`;
+  }
+
+  function crc16(payload) {
+    let crc = 0xFFFF;
+
+    for (let i = 0; i < payload.length; i++) {
+      crc ^= payload.charCodeAt(i) << 8;
+
+      for (let j = 0; j < 8; j++) {
+        if ((crc & 0x8000) !== 0) {
+          crc = (crc << 1) ^ 0x1021;
+        } else {
+          crc = crc << 1;
+        }
+        crc &= 0xFFFF;
+      }
+    }
+
+    return crc.toString(16).toUpperCase().padStart(4, '0');
+  }
+
+  function limparTextoPix(str, max) {
+    return String(str || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^A-Za-z0-9 ]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toUpperCase()
+      .substring(0, max);
+  }
+
+  function limparValorPix(valor) {
+    const numero = Number(String(valor).replace(',', '.').replace(/[^\d.]/g, ''));
+    if (!Number.isFinite(numero) || numero <= 0) {
+      throw new Error('Valor Pix inválido.');
+    }
+    return numero.toFixed(2);
+  }
+
+  function gerarTxidPix() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let txid = '';
+    for (let i = 0; i < 14; i++) {
+      txid += chars[Math.floor(Math.random() * chars.length)];
+    }
+    return txid;
+  }
+
+  function gerarPayloadPixNativo(valor) {
+    const valorFormatado = limparValorPix(valor);
+    const txid = gerarTxidPix();
+
+    const merchantAccountInfo = emvField(
+      '26',
+      emvField('00', 'br.gov.bcb.pix') +
+      emvField('01', PIX_KEY)
+    );
+
+    const payloadSemCRC =
+      emvField('00', '01') +
+      emvField('01', '11') +
+      merchantAccountInfo +
+      emvField('52', '0000') +
+      emvField('53', '986') +
+      emvField('54', valorFormatado) +
+      emvField('58', 'BR') +
+      emvField('59', limparTextoPix(PIX_MERCHANT_NAME, 25)) +
+      emvField('60', limparTextoPix(PIX_MERCHANT_CITY, 15)) +
+      emvField('62', emvField('05', txid)) +
+      '6304';
+
+    return payloadSemCRC + crc16(payloadSemCRC);
+  }
+
   async function handleBuy() {
     const nome  = document.getElementById('nome').value.trim();
     const email = document.getElementById('email').value.trim();
@@ -489,37 +578,13 @@
     `);
 
     try {
-      const res = await fetch('/api/criar-pix', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          valor: getValorTotal(),
-          email: email,
-          primeiro_nome: nome.split(' ')[0],
-          ultimo_nome: nome.split(' ').slice(1).join(' ') || nome.split(' ')[0],
-          cpf: cpf.replace(/\D/g,''),
-          materia: MATERIA_SLUG,
-          produto: orderbumpAtivo ? (PRODUTO_NOME + ' + ' + ORDERBUMP_NOME) : PRODUTO_NOME,
-          orderbump: orderbumpAtivo
-        })
-      });
-
-      const data = await res.json();
-      if (!res.ok || data.error) {
-        throw new Error(data.message || 'Não foi possível gerar o Pix.');
-      }
-
-      const pixPayload  = data.point_of_interaction?.transaction_data?.qr_code;
-      const pixQrBase64 = data.point_of_interaction?.transaction_data?.qr_code_base64;
-
-      if (!pixPayload) throw new Error('QR Code PIX não retornado.');
-      showPixQR(pixPayload, pixQrBase64, email, nome);
-
+      const pixPayload = gerarPayloadPixNativo(getValorTotal());
+      showPixQR(pixPayload, email, nome);
     } catch (err) {
       showModal(`
         <div style="padding:20px 0;">
           <div style="font-size:32px;margin-bottom:12px;">❌</div>
-          <div style="font-size:15px;font-weight:700;color:#e05252;margin-bottom:8px;">Erro ao processar</div>
+          <div style="font-size:15px;font-weight:700;color:#e05252;margin-bottom:8px;">Erro ao gerar Pix</div>
           <div style="font-size:13px;color:#666;margin-bottom:16px;">${err.message}</div>
           <button onclick="closeModal()" style="background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;cursor:pointer;">Tentar novamente</button>
         </div>
@@ -527,7 +592,7 @@
     }
   }
 
-  function showPixQR(payload, qrBase64, email, nome) {
+  function showPixQR(payload, email, nome) {
     const linkWhats = 'https://wa.me/' + WHATSAPP_NUM + '?text=' + encodeURIComponent(
       'Olá! Acabei de pagar o Pix do Método VDE - 2ª Fase OAB Administrativo.\nNome: ' + nome + '\nEmail: ' + email
     );
@@ -553,8 +618,19 @@
     `);
 
     setTimeout(() => {
-      if (qrBase64) {
-        document.getElementById('qrcode').innerHTML = '<img src="data:image/png;base64,' + qrBase64 + '" style="width:200px;height:200px;" />';
+      const qrEl = document.getElementById('qrcode');
+      if (!qrEl) return;
+
+      if (typeof QRCode !== 'undefined') {
+        qrEl.innerHTML = '';
+        new QRCode(qrEl, {
+          text: payload,
+          width: 200,
+          height: 200,
+          correctLevel: QRCode.CorrectLevel.M
+        });
+      } else {
+        qrEl.innerHTML = '<div style="font-size:11px;color:#e05252;line-height:1.5;">QR Code não carregou. Use o código copia e cola abaixo.</div>';
       }
     }, 100);
   }
